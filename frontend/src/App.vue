@@ -18,7 +18,7 @@ const handleLogout = async () => {
 <template>
   <header class="global-nav">
     <div class="nav-content">
-      <RouterLink to="/" class="nav-logo"> ReviewSite</RouterLink>
+      <RouterLink to="/" class="nav-logo"> SummaryHub</RouterLink>
       <nav>
         <RouterLink to="/reviews">Reviews</RouterLink>
         <RouterLink to="/chatbot">AI Genius</RouterLink>
@@ -43,7 +43,7 @@ const handleLogout = async () => {
 
   <footer class="global-footer">
     <div class="footer-content">
-      <p>Copyright © 2025 ReviewSite Inc. 모든 권리 보유.</p>
+      <p>Copyright © 2025 SummaryHub Inc. 모든 권리 보유.</p>
     </div>
   </footer>
 </template>

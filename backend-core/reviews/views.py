@@ -8,7 +8,7 @@ from django.http import HttpRequest, HttpResponse
 from django.views.decorators.cache import never_cache
 from django.contrib import messages  # messages 임포트
 from .models import Review, Comment
-from .forms import ReviewForm, CommentForm
+# from .forms import ReviewForm, CommentForm
 
 
 # Create your views here.
