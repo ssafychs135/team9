@@ -27,9 +27,11 @@
 import { ref } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
+import { useModalStore } from '@/stores/modalStore';
 
 const router = useRouter();
 const store = useAuthStore();
+const modalStore = useModalStore();
 
 const username = ref('');
 const password = ref('');
@@ -46,7 +48,7 @@ function handleLogin() {
       router.push({ name: 'landing' });
     })
     .catch(error => {
-      window.alert('Login failed: ' + (error.response?.data?.detail || '로그인에 실패했습니다.'));
+      modalStore.alert('Login failed: ' + (error.response?.data?.detail || '로그인에 실패했습니다.'));
     });
 }
 </script>

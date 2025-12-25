@@ -29,9 +29,11 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
+import { useModalStore } from '@/stores/modalStore';
 
 const router = useRouter();
 const store = useAuthStore();
+const modalStore = useModalStore();
 
 const username = ref('');
 const email = ref('');
@@ -53,7 +55,7 @@ function handleSignup() {
     })
     .catch(error => {
       // 에러 처리 (예: 사용자에게 에러 메시지 표시)
-      window.alert('Signup failed: ' + JSON.stringify(error.response.data));
+      modalStore.alert('Signup failed: ' + JSON.stringify(error.response.data));
     });
 }
 </script>

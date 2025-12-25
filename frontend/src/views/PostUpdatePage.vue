@@ -43,12 +43,14 @@
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
 import { useAuthStore } from '@/stores/authStore';
+import { useModalStore } from '@/stores/modalStore';
 import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();
 const router = useRouter();
 const postId = route.params.id;
 const authStore = useAuthStore();
+const modalStore = useModalStore();
 
 // 입력 데이터들을 관리하기 위한 반응형 변수(Ref)들입니다.
 const title = ref('');
@@ -79,12 +81,12 @@ onMounted(async () => {
     
     // 권한 확인 (선택 사항: 백엔드에서도 막지만 UX 차원에서)
     if (authStore.username !== response.data.user.username) {
-      alert("수정 권한이 없습니다.");
+      await modalStore.alert("수정 권한이 없습니다.");
       router.push('/reviews');
     }
   } catch (error) {
     console.error('Error fetching review data:', error);
-    alert('리뷰 정보를 불러오는 데 실패했습니다.');
+    await modalStore.alert('리뷰 정보를 불러오는 데 실패했습니다.');
     router.push('/reviews');
   }
 });
@@ -96,7 +98,7 @@ async function requestSummary() {
   videoId = extractYoutubeId(youtubeUrl.value);
   
   if (!videoId) {
-    alert('올바른 유튜브 링크를 입력해 주세요.');
+    modalStore.alert('올바른 유튜브 링크를 입력해 주세요.');
     return;
   }
 
@@ -112,12 +114,12 @@ async function requestSummary() {
     });
 
     content.value = response.data; 
-    alert('요약이 완료되었습니다!');
+    modalStore.alert('요약이 완료되었습니다!');
     
   } catch (error) {
     console.error('요약 요청 중 오류 발생:', error);
     content.value = '요약 중 오류가 발생했습니다. 서버가 켜져 있는지 확인해 주세요.';
-    alert('서버 연결에 실패했습니다.');
+    modalStore.alert('서버 연결에 실패했습니다.');
   } finally {
     isSummarizing.value = false;
   }
@@ -126,7 +128,7 @@ async function requestSummary() {
 // 글 수정 완료 로직입니다.
 function submitReview() {
   if (!title.value || !content.value) {
-    alert('제목과 내용을 모두 입력해 주세요.');
+    modalStore.alert('제목과 내용을 모두 입력해 주세요.');
     return;
   }
 
@@ -148,12 +150,12 @@ function submitReview() {
         'Authorization': `Token ${authStore.token}`
       }
     }
-  ).then(() => {
-    alert('리뷰가 성공적으로 수정되었습니다!');
+  ).then(async () => {
+    await modalStore.alert('리뷰가 성공적으로 수정되었습니다!');
     router.push({ name: 'review-detail', params: { id: postId } });
   }).catch(error => {
     console.error('리뷰 수정 중 오류 발생:', error);
-    alert('리뷰 수정에 실패했습니다. 다시 시도해 주세요.');
+    modalStore.alert('리뷰 수정에 실패했습니다. 다시 시도해 주세요.');
   });
 }
 </script>

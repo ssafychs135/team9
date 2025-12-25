@@ -1,11 +1,13 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LandingPage from '../views/LandingPage.vue'
 import { useAuthStore } from '../stores/authStore'
+import { useModalStore } from '../stores/modalStore'
 
-const requireGuest = (to, from, next) => {
+const requireGuest = async (to, from, next) => {
   const authStore = useAuthStore()
+  const modalStore = useModalStore()
   if (authStore.isAuthenticated) {
-    window.alert('이미 로그인된 상태입니다.')
+    await modalStore.alert('이미 로그인된 상태입니다.')
     if (from.name) {
       next(false)
     } else {
@@ -16,10 +18,11 @@ const requireGuest = (to, from, next) => {
   }
 }
 
-const requireAuth = (to, from, next) => {
+const requireAuth = async (to, from, next) => {
   const authStore = useAuthStore()
+  const modalStore = useModalStore()
   if (!authStore.isAuthenticated) {
-    window.alert('로그인이 필요한 서비스입니다.')
+    await modalStore.alert('로그인이 필요한 서비스입니다.')
     next('/login')
   } else {
     next()

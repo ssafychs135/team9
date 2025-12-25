@@ -1,13 +1,16 @@
 <script setup>
 import { RouterLink, RouterView, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
+import { useModalStore } from '@/stores/modalStore'
+import BaseModal from '@/components/BaseModal.vue'
 
 const store = useAuthStore()
+const modalStore = useModalStore()
 const router = useRouter()
 
-const handleLogout = () => {
+const handleLogout = async () => {
   store.logout()
-  window.alert('성공적으로 로그아웃되었습니다.')
+  await modalStore.alert('성공적으로 로그아웃되었습니다.')
   router.push({ name: 'landing' })
 }
 </script>
@@ -35,6 +38,8 @@ const handleLogout = () => {
   <main>
     <RouterView />
   </main>
+
+  <BaseModal />
 
   <footer class="global-footer">
     <div class="footer-content">

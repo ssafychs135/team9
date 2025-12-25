@@ -43,6 +43,7 @@
 import { ref } from 'vue';
 import axios from 'axios'; // HTTP 요청을 위해 axios를 불러옵니다.
 import { useAuthStore } from '@/stores/authStore';
+import { useModalStore } from '@/stores/modalStore';
 
 // 입력 데이터들을 관리하기 위한 반응형 변수(Ref)들입니다.
 const title = ref('');
@@ -50,6 +51,7 @@ const youtubeUrl = ref('');
 const content = ref('');
 const isSummarizing = ref(false); // 요약 진행 중 상태를 나타냅니다.
 const userToken = useAuthStore().token; // 인증 토큰을 스토어에서 가져옵니다.
+const modalStore = useModalStore();
 let videoId =""; // 유튜브 비디오 ID를 저장할 변수입니다.
 /**
  * 유튜브 URL에서 11자리 비디오 ID를 추출합니다.
@@ -68,7 +70,7 @@ async function requestSummary() {
   console.log("Extracted Video ID:", videoId);
 
   if (!videoId) {
-    alert('올바른 유튜브 링크를 입력해 주세요.');
+    modalStore.alert('올바른 유튜브 링크를 입력해 주세요.');
     return;
   }
 
@@ -88,13 +90,13 @@ async function requestSummary() {
     // 서버에서 보내준 응답 데이터(요약본)를 화면의 내용(content)란에 넣어줍니다.
     // 서버 응답 구조에 따라 response.data 또는 response.data.summary 등으로 수정될 수 있습니다.
     content.value = response.data; 
-    alert('요약이 완료되었습니다!');
+    modalStore.alert('요약이 완료되었습니다!');
     
   } catch (error) {
     console.error('요약 요청 중 오류 발생:', error);
     // 에러 발생 시 사용자에게 알림을 줍니다.
     content.value = '요약 중 오류가 발생했습니다. 서버가 켜져 있는지 확인해 주세요.';
-    alert('서버 연결에 실패했습니다.');
+    modalStore.alert('서버 연결에 실패했습니다.');
   } finally {
     isSummarizing.value = false;
   }
@@ -103,7 +105,7 @@ async function requestSummary() {
 // 글 작성 완료 로직입니다.
 function submitReview() {
   if (!title.value || !content.value) {
-    alert('제목과 내용을 모두 입력해 주세요.');
+    modalStore.alert('제목과 내용을 모두 입력해 주세요.');
     return;
   }
   
@@ -123,13 +125,13 @@ function submitReview() {
         'Authorization': `Token ${userToken}`
       }
     }
-  ).then(() => {
-    alert('리뷰가 성공적으로 작성되었습니다!');
+  ).then(async () => {
+    await modalStore.alert('리뷰가 성공적으로 작성되었습니다!');
     // 작성 완료 후 리뷰 목록 페이지로 이동합니다.
     window.location.href = '/reviews';
   }).catch(error => {
     console.error('리뷰 작성 중 오류 발생:', error);
-    alert('리뷰 작성에 실패했습니다. 다시 시도해 주세요.');
+    modalStore.alert('리뷰 작성에 실패했습니다. 다시 시도해 주세요.');
   });
 }
 </script>

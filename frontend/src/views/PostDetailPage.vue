@@ -79,10 +79,12 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { RouterLink } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
+import { useModalStore } from '@/stores/modalStore';
 
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
+const modalStore = useModalStore();
 const postId = route.params.id;
 
 const title = ref('');
@@ -168,26 +170,27 @@ function submitComment() {
     })
     .catch(error => {
       console.error('Error posting comment:', error);
-      alert('댓글 작성에 실패했습니다.');
+      modalStore.alert('댓글 작성에 실패했습니다.');
     });
 }
 
-function deleteReview() {
-  if (!confirm('정말로 이 리뷰를 삭제하시겠습니까?')) return;
+async function deleteReview() {
+  const confirmed = await modalStore.confirm('정말로 이 리뷰를 삭제하시겠습니까?');
+  if (!confirmed) return;
 
   axios.delete(`http://localhost:8000/api/reviews/${postId}/`, {
     headers: {
       Authorization: `Token ${authStore.token}`
     }
   })
-    .then(() => {
-      alert('리뷰가 삭제되었습니다.');
-      router.push('/reviews');
-    })
-    .catch(error => {
-      console.error('Error deleting review:', error);
-      alert('리뷰 삭제에 실패했습니다.');
-    });
+  .then(async () => {
+    await modalStore.alert('리뷰가 삭제되었습니다.');
+    router.push('/reviews');
+  })
+  .catch(error => {
+    console.error('Error deleting review:', error);
+    modalStore.alert('리뷰 삭제에 실패했습니다.');
+  });
 }
 
 function editReview() {
