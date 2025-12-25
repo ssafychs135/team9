@@ -1,5 +1,30 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LandingPage from '../views/LandingPage.vue'
+import { useAuthStore } from '../stores/authStore'
+
+const requireGuest = (to, from, next) => {
+  const authStore = useAuthStore()
+  if (authStore.isAuthenticated) {
+    window.alert('이미 로그인된 상태입니다.')
+    if (from.name) {
+      next(false)
+    } else {
+      next('/')
+    }
+  } else {
+    next()
+  }
+}
+
+const requireAuth = (to, from, next) => {
+  const authStore = useAuthStore()
+  if (!authStore.isAuthenticated) {
+    window.alert('로그인이 필요한 서비스입니다.')
+    next('/login')
+  } else {
+    next()
+  }
+}
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -29,16 +54,19 @@ const router = createRouter({
       path: '/chatbot',
       name: 'chatbot',
       component: () => import('../views/ChatbotPage.vue'),
+      beforeEnter: requireAuth,
     },
     {
       path: '/login',
       name: 'login',
       component: () => import('../views/LoginPage.vue'),
+      beforeEnter: requireGuest,
     },
     {
       path: '/signup',
       name: 'signup',
       component: () => import('../views/SignupPage.vue'),
+      beforeEnter: requireGuest,
     },
   ],
 })
