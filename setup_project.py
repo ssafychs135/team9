@@ -36,10 +36,59 @@ def run_command(command, cwd=None, description=""):
         print(f"에러 코드: {e}")
         sys.exit(1)
 
+def create_env_files():
+    """
+    backend-core와 backend-worker에 필요한 .env 파일을 생성합니다.
+    이미 파일이 존재하면 생성을 건너뜁니다.
+    """
+    print("\n🚀 [진행 중] .env 환경 변수 파일 생성 확인...")
+
+    # 1. Backend Core .env 설정
+    core_env_path = os.path.join(BACKEND_CORE_DIR, ".env")
+    if not os.path.exists(core_env_path):
+        core_env_content = {
+            "SECRET_KEY": "django-insecure-change-me-now",
+            "DEBUG": "True",
+            "ALLOWED_HOSTS": "*",
+            "UPSTAGE_API_KEY": "",
+            "OPENAI_API_KEY": "",
+            "CHROMA_DB_PATH": "./chroma_db",
+            "CHROMA_DB_PATH_CRAWLED": "./chroma_db_crawled"
+        }
+        try:
+            with open(core_env_path, "w", encoding="utf-8") as f:
+                for key, value in core_env_content.items():
+                    f.write(f"{key}={value}\n")
+            print(f"✅ [완료] backend-core/.env 생성됨 (키 값만 포함)")
+        except Exception as e:
+            print(f"❌ [실패] backend-core/.env 생성 중 오류: {e}")
+    else:
+        print("ℹ️  [정보] backend-core/.env 파일이 이미 존재합니다.")
+
+    # 2. Backend Worker .env 설정
+    worker_env_path = os.path.join(BACKEND_WORKER_DIR, ".env")
+    if not os.path.exists(worker_env_path):
+        worker_env_content = {
+            "PORT": "3000",
+            "GEMINI_API_KEY": ""
+        }
+        try:
+            with open(worker_env_path, "w", encoding="utf-8") as f:
+                for key, value in worker_env_content.items():
+                    f.write(f"{key}={value}\n")
+            print(f"✅ [완료] backend-worker/.env 생성됨 (키 값만 포함)")
+        except Exception as e:
+            print(f"❌ [실패] backend-worker/.env 생성 중 오류: {e}")
+    else:
+        print("ℹ️  [정보] backend-worker/.env 파일이 이미 존재합니다.")
+
 def main():
     print("="*50)
     print("🛠️  프로젝트 초기 설정(Setup)을 시작합니다.")
     print("="*50)
+
+    # 0. 환경 변수 파일(.env) 생성
+    create_env_files()
 
     # 1. 파이썬 가상환경(venv) 생성
     # backend-core 폴더 안에 'venv'라는 이름으로 가상환경을 만듭니다.
