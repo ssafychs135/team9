@@ -43,6 +43,7 @@ const router = createRouter({
       path: '/reviews/create',
       name: 'review-create',
       component: () => import('../views/PostCreatePage.vue'),
+      beforeEnter: requireAuth,
     },
     {
       // :id는 동적 세그먼트로, 리뷰의 ID(숫자 등)가 들어갈 자리입니다.

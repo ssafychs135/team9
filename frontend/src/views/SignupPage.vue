@@ -120,7 +120,7 @@ input {
 input:focus {
   outline: none;
   border-color: #0071e3;
-  background-color: white;
+  background-color: var(--c-input-background);
   box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.15);
 }
 

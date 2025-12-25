@@ -48,10 +48,38 @@
     /* UI Elements Dark */
     --c-card-background: #1c1c1e;
     --c-input-background: #1d1d1f;
-    --c-input-text: #424245;
-    --c-input-border: #ffffff;
+    --c-input-text: #f5f5f7;
+    --c-input-border: #424245;
     --c-nav-background: rgba(0, 0, 0, 0.8);
   }
+}
+
+/* Global Input Styles */
+input, textarea, select {
+  background-color: var(--c-input-background);
+  color: var(--c-input-text);
+  border: 1px solid var(--c-input-border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 1rem;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--c-accent);
+  background-color: var(--c-input-background); /* Keep it dark on focus */
+}
+
+/* Remove browser default autofill background */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px var(--c-input-background) inset !important;
+  -webkit-text-fill-color: var(--c-input-text) !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 *,

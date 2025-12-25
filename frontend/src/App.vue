@@ -7,6 +7,7 @@ const router = useRouter()
 
 const handleLogout = () => {
   store.logout()
+  window.alert('성공적으로 로그아웃되었습니다.')
   router.push({ name: 'landing' })
 }
 </script>

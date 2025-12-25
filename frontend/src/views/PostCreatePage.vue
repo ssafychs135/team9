@@ -191,7 +191,7 @@ function submitReview() {
 
 .input-integrated-wrapper:focus-within {
   border-color: #0071e3;
-  background-color: white;
+  background-color: var(--c-input-background);
   box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.15);
 }
 
@@ -204,6 +204,7 @@ function submitReview() {
   /* 텍스트 입력 영역 패딩 */
   font-size: 16px;
   outline: none;
+  color: var(--c-input-text);
 }
 
 /* 통합형 요약 버튼 스타일 */
@@ -252,7 +253,7 @@ input:focus,
 textarea:focus {
   outline: none;
   border-color: #0071e3;
-  background-color: white;
+  background-color: var(--c-input-background);
   box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.15);
 }
 
