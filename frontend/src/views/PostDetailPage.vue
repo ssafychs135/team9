@@ -2,7 +2,13 @@
   <div class="post-detail-page container">
     <div class="detail-wrapper">
       <header class="detail-header">
-        <RouterLink to="/reviews" class="btn-back">← 목록으로 돌아가기</RouterLink>
+        <div class="header-top">
+          <RouterLink to="/reviews" class="btn-back">← 목록으로 돌아가기</RouterLink>
+          <div v-if="isAuthor" class="post-actions">
+            <button @click="editReview" class="btn-action">수정</button>
+            <button @click="deleteReview" class="btn-action delete">삭제</button>
+          </div>
+        </div>
         <h1 class="post-title">{{ title }}</h1>
         <div class="post-meta">
           <span v-if="author" class="author">작성자: {{ author }}</span>
@@ -74,11 +80,12 @@
 import axios from 'axios';
 import { marked } from 'marked';
 import { ref, onMounted, computed } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { RouterLink } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
 
 const route = useRoute();
+const router = useRouter();
 const authStore = useAuthStore();
 const postId = route.params.id;
 
@@ -94,6 +101,11 @@ const newCommentContent = ref('');
 const formattedDate = computed(() => {
   if (!createdAt.value) return '';
   return formatDate(createdAt.value);
+});
+
+// 작성자 여부 확인
+const isAuthor = computed(() => {
+  return authStore.isAuthenticated && authStore.username === author.value;
 });
 
 function formatDate(dateString) {
@@ -162,6 +174,28 @@ function submitComment() {
     alert('댓글 작성에 실패했습니다.');
   });
 }
+
+function deleteReview() {
+  if (!confirm('정말로 이 리뷰를 삭제하시겠습니까?')) return;
+
+  axios.delete(`http://localhost:8000/api/reviews/${postId}/`, {
+    headers: {
+      Authorization: `Token ${authStore.token}`
+    }
+  })
+  .then(() => {
+    alert('리뷰가 삭제되었습니다.');
+    router.push('/reviews');
+  })
+  .catch(error => {
+    console.error('Error deleting review:', error);
+    alert('리뷰 삭제에 실패했습니다.');
+  });
+}
+
+function editReview() {
+  router.push({ name: 'review-edit', params: { id: postId } });
+}
 </script>
 
 <style scoped>
@@ -180,17 +214,47 @@ function submitComment() {
   margin-bottom: 40px;
 }
 
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
 .btn-back {
   display: inline-block;
   color: var(--c-accent);
   text-decoration: none;
   font-weight: 500;
-  margin-bottom: 20px;
   transition: opacity 0.2s;
 }
 
 .btn-back:hover {
   opacity: 0.7;
+}
+
+.post-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.btn-action {
+  background: none;
+  border: none;
+  font-size: 14px;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  transition: color 0.2s;
+  padding: 0;
+}
+
+.btn-action:hover {
+  color: var(--c-text-primary);
+  text-decoration: underline;
+}
+
+.btn-action.delete:hover {
+  color: #ff3b30; /* Red color for delete action */
 }
 
 .post-title {

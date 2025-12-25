@@ -52,6 +52,12 @@ const router = createRouter({
       component: () => import('../views/PostDetailPage.vue'),
     },
     {
+      path: '/reviews/:id/edit',
+      name: 'review-edit',
+      component: () => import('../views/PostUpdatePage.vue'),
+      beforeEnter: requireAuth,
+    },
+    {
       path: '/chatbot',
       name: 'chatbot',
       component: () => import('../views/ChatbotPage.vue'),
