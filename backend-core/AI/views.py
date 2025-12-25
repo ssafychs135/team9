@@ -2,6 +2,7 @@
 
 import json
 import os
+import sys
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
@@ -12,9 +13,9 @@ from .chatbot_service import get_conversational_rag_chain, initialize_chatbot
 # 서버 시작 시 LLM 및 Retriever 초기화
 try:
     initialize_chatbot()
-    print("챗봇 초기화 완료 (웹 챗봇용).")
+    sys.stderr.write("챗봇 초기화 완료 (웹 챗봇용).\n")
 except Exception as e:
-    print(f"챗봇 초기화 실패: {e}")
+    sys.stderr.write(f"챗봇 초기화 실패: {e}\n")
 
 def chatbot_page(request):
     """
@@ -71,7 +72,7 @@ def chatbot_api(request):
             return JsonResponse({'error': '유효하지 않은 JSON 형식입니다.'}, status=400)
         except Exception as e:
             # 실제 운영 환경에서는 더 구체적인 로깅과 에러 처리가 필요합니다.
-            print(f"챗봇 처리 중 오류 발생: {e}")
+            sys.stderr.write(f"챗봇 처리 중 오류 발생: {e}\n")
             return JsonResponse({'error': f'챗봇 처리 중 오류 발생: {e}'}, status=500)
     
     return JsonResponse({'error': 'POST 요청만 허용됩니다.'}, status=405)

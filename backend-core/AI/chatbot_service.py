@@ -1,6 +1,7 @@
 # AI/chatbot_service.py
 
 import os
+import sys
 import chromadb
 from dotenv import load_dotenv
 import datetime
@@ -107,15 +108,15 @@ def initialize_chatbot():
             verbose=True,  # 내부적으로 어떤 필터가 생성되었는지 콘솔에 출력
             search_kwargs={"k": 5} # 검색 결과 개수
         )
-        print("SelfQueryRetriever (메타데이터 필터 포함) 초기화 완료.")
+        sys.stderr.write("SelfQueryRetriever (메타데이터 필터 포함) 초기화 완료.\n")
     except Exception as e:
-        print(f"SelfQueryRetriever 초기화 실패 (기본 검색기 사용): {e}")
+        sys.stderr.write(f"SelfQueryRetriever 초기화 실패 (기본 검색기 사용): {e}\n")
         # 실패 시 기본 리트리버로 폴백
         retriever = vectorstore.as_retriever(
             search_type="similarity", search_kwargs={"k": 5}
         )
     
-    print("LLM 및 Retriever 초기화 완료.")
+    sys.stderr.write("LLM 및 Retriever 초기화 완료.\n")
 
 
 def get_conversational_rag_chain():
@@ -190,13 +191,13 @@ def get_conversational_rag_chain():
         retrieved_documents.sort(key=get_date_value, reverse=True)
 
         # 로그 출력
-        print(f"--- Retrieved & Sorted Documents ({len(retrieved_documents)} docs) ---")
+        sys.stderr.write(f"--- Retrieved & Sorted Documents ({len(retrieved_documents)} docs) ---\n")
         for i, doc in enumerate(retrieved_documents):
             # 메타데이터의 날짜 정보 표시
             r_date = doc.metadata.get('released_date', 'Unknown Date')
             model_name = doc.metadata.get('model_name', 'Unknown Model')
-            print(f"Doc {i+1} [{r_date}] {model_name}: {doc.page_content[:50]}...")
-        print("------------------------------------")
+            sys.stderr.write(f"Doc {i+1} [{r_date}] {model_name}: {doc.page_content[:50]}...\n")
+        sys.stderr.write("------------------------------------\n")
         
         return retrieved_documents
 
