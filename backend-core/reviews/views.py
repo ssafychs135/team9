@@ -12,145 +12,145 @@ from .forms import ReviewForm, CommentForm
 
 
 # Create your views here.
-def index(req: HttpRequest) -> HttpResponse:
-    """게시글 전체를 조회하는 함수"""
-    reviews = Review.objects.all().order_by("created_at").reverse()
+# def index(req: HttpRequest) -> HttpResponse:
+#     """게시글 전체를 조회하는 함수"""
+#     reviews = Review.objects.all().order_by("created_at").reverse()
 
-    context = {
-        "reviews": reviews,
-    }
-    return render(req, "reviews/index.html", context)
-
-
-def detail(req: HttpRequest, review_pk: int) -> HttpResponse:
-
-    review: Review = get_object_or_404(Review, pk=review_pk)
-    comments = review.comments.all()  # 해당 리뷰의 모든 댓글 가져오기
-    comment_form = CommentForm()
-
-    context = {
-        "review": review,
-        "comments": comments,  # 댓글 목록을 컨텍스트에 추가
-        "comment_form": comment_form,
-    }
-
-    return render(req, "reviews/detail.html", context)
+#     context = {
+#         "reviews": reviews,
+#     }
+#     return render(req, "reviews/index.html", context)
 
 
-@login_required
-@never_cache  # 뒤로가기 시 캐시된 폼 데이터가 나타나는 것을 방지
-def create(req: HttpRequest) -> HttpResponse:
+# def detail(req: HttpRequest, review_pk: int) -> HttpResponse:
 
-    if req.method == "POST":
-        form = ReviewForm(req.POST)
-        if form.is_valid():
-            review: Review = form.save(commit=False)
-            review.user = req.user
-            review.save()
-            messages.success(req, "리뷰가 성공적으로 작성되었습니다.")  # 성공 메시지 추가
-            req.session["review_created_just_now"] = True  # 세션 플래그 설정
-            return redirect("reviews:detail", review.pk)  # PRG redirect
-    else:
-        # GET 요청 (뒤로가기 포함)
-        if req.session.pop("review_created_just_now", False):
-            # 방금 리뷰를 작성하고 뒤로가기 한 경우
-            messages.info(
-                req,
-                "리뷰 작성을 완료했습니다. 새로운 리뷰를 작성하시려면 다시 시도해주세요.",
-            )
-            return redirect("reviews:index")  # 리뷰 목록 페이지로 리다이렉트
-        review_form = ReviewForm()
+#     review: Review = get_object_or_404(Review, pk=review_pk)
+#     comments = review.comments.all()  # 해당 리뷰의 모든 댓글 가져오기
+#     comment_form = CommentForm()
 
-    context = {
-        "review_form": review_form,
-    }
+#     context = {
+#         "review": review,
+#         "comments": comments,  # 댓글 목록을 컨텍스트에 추가
+#         "comment_form": comment_form,
+#     }
 
-    return render(req, "reviews/create.html", context)
+#     return render(req, "reviews/detail.html", context)
 
 
-@login_required
-def update(req: HttpRequest, review_pk: int) -> HttpResponse:  
-    review = get_object_or_404(Review, pk=review_pk)
-    if req.user != review.user:
-        # 권한이 없는 경우 처리 (예: 403 Forbidden 응답)
-        # from django.http import HttpResponseForbidden
-        # return HttpResponseForbidden()
-        return redirect("reviews:detail", review_pk)
+# @login_required
+# @never_cache  # 뒤로가기 시 캐시된 폼 데이터가 나타나는 것을 방지
+# def create(req: HttpRequest) -> HttpResponse:
 
-    if req.method == "POST":
-        # POST 요청: 폼을 제출하여 리뷰를 수정
-        form = ReviewForm(req.POST, instance=review)
-        if form.is_valid():
-            form.save()
-            return redirect("reviews:detail", review_pk)
-    else:
-        # GET 요청: 기존 리뷰 내용으로 채워진 폼을 표시
-        form = ReviewForm(instance=review)
+#     if req.method == "POST":
+#         form = ReviewForm(req.POST)
+#         if form.is_valid():
+#             review: Review = form.save(commit=False)
+#             review.user = req.user
+#             review.save()
+#             messages.success(req, "리뷰가 성공적으로 작성되었습니다.")  # 성공 메시지 추가
+#             req.session["review_created_just_now"] = True  # 세션 플래그 설정
+#             return redirect("reviews:detail", review.pk)  # PRG redirect
+#     else:
+#         # GET 요청 (뒤로가기 포함)
+#         if req.session.pop("review_created_just_now", False):
+#             # 방금 리뷰를 작성하고 뒤로가기 한 경우
+#             messages.info(
+#                 req,
+#                 "리뷰 작성을 완료했습니다. 새로운 리뷰를 작성하시려면 다시 시도해주세요.",
+#             )
+#             return redirect("reviews:index")  # 리뷰 목록 페이지로 리다이렉트
+#         review_form = ReviewForm()
 
-    context = {
-        "review": review,
-        "review_form": form,
-    }
-    return render(req, "reviews/update.html", context)
+#     context = {
+#         "review_form": review_form,
+#     }
 
-
-@login_required
-def delete(req: HttpRequest, review_pk: int) -> HttpResponse:
-    review = get_object_or_404(Review, pk=review_pk)
-
-    if review.user == req.user:
-        review.delete()
-
-    return redirect("reviews:index")
+#     return render(req, "reviews/create.html", context)
 
 
-def create_comment(req: HttpRequest, review_pk: int) -> HttpResponse:
-    review: Review = get_object_or_404(Review, pk=review_pk)
-    comment_form = CommentForm(req.POST)
+# @login_required
+# def update(req: HttpRequest, review_pk: int) -> HttpResponse:  
+#     review = get_object_or_404(Review, pk=review_pk)
+#     if req.user != review.user:
+#         # 권한이 없는 경우 처리 (예: 403 Forbidden 응답)
+#         # from django.http import HttpResponseForbidden
+#         # return HttpResponseForbidden()
+#         return redirect("reviews:detail", review_pk)
 
-    if comment_form.is_valid():
+#     if req.method == "POST":
+#         # POST 요청: 폼을 제출하여 리뷰를 수정
+#         form = ReviewForm(req.POST, instance=review)
+#         if form.is_valid():
+#             form.save()
+#             return redirect("reviews:detail", review_pk)
+#     else:
+#         # GET 요청: 기존 리뷰 내용으로 채워진 폼을 표시
+#         form = ReviewForm(instance=review)
 
-        comment: Comment = comment_form.save(commit=False)
-        comment.review = review
-        comment.user = req.user
-        comment.save()
-        return redirect("reviews:detail", review.pk)
-    context = {
-        "review": review,
-        "comment_form": comment_form,
-    }
-
-    return render(req, "reviews/detail.html", context)
+#     context = {
+#         "review": review,
+#         "review_form": form,
+#     }
+#     return render(req, "reviews/update.html", context)
 
 
-@login_required
-def delete_comment(req: HttpRequest, review_pk: int, comment_pk: int) -> HttpResponse:
-    # 1. 삭제는 POST 요청으로만 허용
-    if req.method != "POST":
-        messages.error(req, "잘못된 접근입니다. 댓글 삭제는 POST 요청으로만 가능합니다.")
-        return redirect("reviews:detail", review_pk)
+# @login_required
+# def delete(req: HttpRequest, review_pk: int) -> HttpResponse:
+#     review = get_object_or_404(Review, pk=review_pk)
 
-    # 2. 리뷰 객체 조회 (존재하지 않으면 404 에러)
-    review = get_object_or_404(Review, pk=review_pk)
+#     if review.user == req.user:
+#         review.delete()
 
-    # 3. 댓글 객체 조회 (comment_pk와 review 객체를 모두 사용하여 보안 강화)
-    #    댓글이 존재하지 않거나 해당 리뷰에 속하지 않으면 404 에러
-    comment = get_object_or_404(Comment, pk=comment_pk, review=review)
+#     return redirect("reviews:index")
 
-    # 4. 권한 확인: 댓글 작성자만 삭제 가능
-    if comment.user != req.user:
-        messages.error(req, "댓글을 삭제할 권한이 없습니다.")
-        # return HttpResponseForbidden("댓글을 삭제할 권한이 없습니다.") # 403 에러를 원한다면 사용
-        return redirect(
-            "reviews:detail", review_pk
-        )  # 권한 없으면 상세 페이지로 리다이렉트
 
-    # 5. 댓글 삭제
-    comment.delete()
-    messages.success(req, "댓글이 성공적으로 삭제되었습니다.")
-    return redirect(
-        "reviews:detail", review_pk
-    )  # 삭제 후 리뷰 상세 페이지로 리다이렉트
+# def create_comment(req: HttpRequest, review_pk: int) -> HttpResponse:
+#     review: Review = get_object_or_404(Review, pk=review_pk)
+#     comment_form = CommentForm(req.POST)
+
+#     if comment_form.is_valid():
+
+#         comment: Comment = comment_form.save(commit=False)
+#         comment.review = review
+#         comment.user = req.user
+#         comment.save()
+#         return redirect("reviews:detail", review.pk)
+#     context = {
+#         "review": review,
+#         "comment_form": comment_form,
+#     }
+
+#     return render(req, "reviews/detail.html", context)
+
+
+# @login_required
+# def delete_comment(req: HttpRequest, review_pk: int, comment_pk: int) -> HttpResponse:
+#     # 1. 삭제는 POST 요청으로만 허용
+#     if req.method != "POST":
+#         messages.error(req, "잘못된 접근입니다. 댓글 삭제는 POST 요청으로만 가능합니다.")
+#         return redirect("reviews:detail", review_pk)
+
+#     # 2. 리뷰 객체 조회 (존재하지 않으면 404 에러)
+#     review = get_object_or_404(Review, pk=review_pk)
+
+#     # 3. 댓글 객체 조회 (comment_pk와 review 객체를 모두 사용하여 보안 강화)
+#     #    댓글이 존재하지 않거나 해당 리뷰에 속하지 않으면 404 에러
+#     comment = get_object_or_404(Comment, pk=comment_pk, review=review)
+
+#     # 4. 권한 확인: 댓글 작성자만 삭제 가능
+#     if comment.user != req.user:
+#         messages.error(req, "댓글을 삭제할 권한이 없습니다.")
+#         # return HttpResponseForbidden("댓글을 삭제할 권한이 없습니다.") # 403 에러를 원한다면 사용
+#         return redirect(
+#             "reviews:detail", review_pk
+#         )  # 권한 없으면 상세 페이지로 리다이렉트
+
+#     # 5. 댓글 삭제
+#     comment.delete()
+#     messages.success(req, "댓글이 성공적으로 삭제되었습니다.")
+#     return redirect(
+#         "reviews:detail", review_pk
+#     )  # 삭제 후 리뷰 상세 페이지로 리다이렉트
 
 
 

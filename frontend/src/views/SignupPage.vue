@@ -1,7 +1,7 @@
 <template>
   <div class="signup-page">
-    <div class="form-container">
-      <div class="form-header">
+    <div class="form-container card">
+      <div class="page-header">
         <h1>계정 생성</h1>
         <p>새로운 ReviewSite ID를 만드세요.</p>
       </div>
@@ -19,7 +19,7 @@
         <div class="form-group">
           <input type="password" v-model="password2" placeholder="password confirmation" required />
         </div>
-        <button type="submit" class="submit-btn">Sign Up</button>
+        <button type="submit" class="submit-btn btn-primary">Sign Up</button>
       </form>
     </div>
   </div>
@@ -71,64 +71,11 @@ function handleSignup() {
   width: 100%;
   max-width: 460px;
   /* 로그인보다 조금 더 넓게 */
-  background: var(--c-card-background);
-  padding: 48px;
-  border-radius: 24px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
-}
-
-.form-header {
-  text-align: center;
-  margin-bottom: 32px;
-}
-
-.form-header h1 {
-  font-size: 28px;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-
-.form-header p {
-  font-size: 15px;
-  color: #86868b;
-}
-
-.form-row {
-  display: flex;
-  gap: 12px;
-}
-
-.form-row .form-group {
-  flex: 1;
-}
-
-.form-group {
-  margin-bottom: 20px;
-}
-
-input {
-  width: 100%;
-  padding: 16px;
-  border: 1px solid var(--c-input-border);
-  border-radius: 12px;
-  font-size: 17px;
-  color: var(--c-input-text);
-  transition: all 0.2s ease;
-  background-color: var(--c-input-background);
-}
-
-input:focus {
-  outline: none;
-  border-color: #0071e3;
-  background-color: var(--c-input-background);
-  box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.15);
+  /* 카드 스타일은 base.css .card로 대체됨 */
 }
 
 .submit-btn {
-  width: 100%;
-  padding: 16px;
-  font-size: 17px;
-  font-weight: 600;
+  /* 기본 버튼 스타일은 base.css .btn-primary로 대체됨 */
   margin-top: 10px;
 }
 </style>

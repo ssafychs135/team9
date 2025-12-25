@@ -34,12 +34,11 @@
         <div v-for="post in posts" :key="post.id" class="review-card">
           <div class="card-image">
             <img :src="`https://img.youtube.com/vi/${post.video_id}/mqdefault.jpg`" alt="">
-            <!-- <div class="placeholder-img"></div> -->
           </div>
           <div class="card-content">
             <span v-if="post.isNew" class="card-tag">NEW</span>
             <h3>{{ post.title }}</h3>
-            <p class="card-summary">{{ removeMd(post.content.substring(0, 40)) }}...</p>
+            <p class="card-summary">{{ removeMd(post.content) }}</p>
             <RouterLink :to="`/reviews/${post.id}`" class="card-link">더 보기</RouterLink>
           </div>
         </div>
@@ -196,10 +195,7 @@ onMounted(() => {
   margin-bottom: 5px;
 }
 
-.btn-text {
-  color: var(--c-accent);
-  font-size: 17px;
-}
+/* .btn-text 스타일은 base.css로 대체됨 */
 
 /* 검색창 스타일 */
 .search-wrapper {
@@ -208,21 +204,9 @@ onMounted(() => {
 }
 
 .search-input {
-  width: 100%;
+  /* 기본 input 스타일은 base.css로 대체되나 패딩/크기는 유지 */
   padding: 10px 10px 10px 36px;
-  border-radius: 10px;
-  border: 1px solid var(--c-input-border);
-  background-color: var(--c-input-background);
-  color: var(--c-input-text);
   font-size: 15px;
-  transition: all 0.2s;
-}
-
-.search-input:focus {
-  outline: none;
-  border-color: var(--c-accent);
-  background-color: var(--c-card-background);
-  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15);
 }
 
 .search-icon {
@@ -230,11 +214,12 @@ onMounted(() => {
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: #86868b;
+  color: var(--c-text-secondary);
   pointer-events: none;
+  z-index: 1;
 }
 
-/* 그리드 및 카드 스타일 (기존 유지) */
+/* 그리드 및 카드 스타일 */
 .review-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -257,21 +242,16 @@ onMounted(() => {
   box-shadow: 0 12px 30px rgba(0,0,0,0.1);
 }
 
-.card-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover; /* 이미지가 비율을 유지하며 영역을 꽉 채우고 중앙을 맞춤 */
-  }
-
 .card-image {
-  height: 200px;
-  background-color: #f5f5f7;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background-color: var(--c-background-secondary);
 }
 
-.placeholder-img {
+.card-image img {
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, #e1e1e1 0%, #f5f5f7 100%);
+  object-fit: cover;
 }
 
 .card-content {
@@ -300,12 +280,19 @@ onMounted(() => {
   color: var(--c-text-secondary);
   line-height: 1.5;
   flex: 1;
+  /* Line Clamp: 3줄 제한 */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .card-link {
   margin-top: 15px;
   font-size: 15px;
   font-weight: 600;
+  color: var(--c-accent);
 }
 
 /* 페이지네이션 스타일 */

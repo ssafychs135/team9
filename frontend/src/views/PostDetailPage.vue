@@ -19,16 +19,14 @@
       <!-- 유튜브 영상 임베드 섹션 -->
       <div v-if="videoId" class="video-section">
         <div class="video-container">
-          <iframe 
-            :src="`https://www.youtube.com/embed/${videoId}`" 
-            frameborder="0" 
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+          <iframe :src="`https://www.youtube.com/embed/${videoId}`" frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowfullscreen>
           </iframe>
         </div>
       </div>
 
-      <main class="review-content-wrapper">
+      <main class="review-content-wrapper card">
         <!-- 마크다운 전용 클래스를 적용합니다. -->
         <div class="markdown-body" v-html="content"></div>
       </main>
@@ -36,21 +34,19 @@
       <!-- 댓글 섹션 -->
       <section class="comments-section">
         <h2 class="section-title">댓글 {{ comments.length }}</h2>
-        
+
         <!-- 댓글 작성 폼 -->
-        <div class="comment-form-wrapper">
+        <div class="comment-form-wrapper card">
           <div v-if="authStore.isAuthenticated" class="comment-form">
-            <textarea 
-              v-model="newCommentContent" 
-              placeholder="댓글을 작성해 주세요..." 
-              rows="3"
-            ></textarea>
+            <textarea v-model="newCommentContent" placeholder="댓글을 작성해 주세요..." rows="3"></textarea>
             <div class="form-actions">
-              <button @click="submitComment" :disabled="!newCommentContent.trim()" class="btn-submit">등록</button>
+              <button @click="submitComment" :disabled="!newCommentContent.trim()" class="btn-primary">등록</button>
             </div>
           </div>
           <div v-else class="login-plz">
-            <p><RouterLink to="/login">로그인</RouterLink> 후 댓글을 작성할 수 있습니다.</p>
+            <p>
+              <RouterLink to="/login">로그인</RouterLink> 후 댓글을 작성할 수 있습니다.
+            </p>
           </div>
         </div>
 
@@ -124,6 +120,7 @@ marked.setOptions({
 });
 
 onMounted(() => {
+  window.scrollTo(0, 0);
   console.log('Fetching details for post ID:', postId);
   fetchReviewDetail();
   fetchComments();
@@ -156,7 +153,7 @@ function fetchComments() {
 function submitComment() {
   if (!newCommentContent.value.trim()) return;
 
-  axios.post(`http://localhost:8000/api/reviews/${postId}/comments/`, 
+  axios.post(`http://localhost:8000/api/reviews/${postId}/comments/`,
     { content: newCommentContent.value },
     {
       headers: {
@@ -164,15 +161,15 @@ function submitComment() {
       }
     }
   )
-  .then(response => {
-    // 성공 시 댓글 목록 갱신 및 입력창 초기화
-    newCommentContent.value = '';
-    fetchComments(); // 전체 목록 다시 불러오기 (또는 response.data를 comments에 push)
-  })
-  .catch(error => {
-    console.error('Error posting comment:', error);
-    alert('댓글 작성에 실패했습니다.');
-  });
+    .then(response => {
+      // 성공 시 댓글 목록 갱신 및 입력창 초기화
+      newCommentContent.value = '';
+      fetchComments(); // 전체 목록 다시 불러오기 (또는 response.data를 comments에 push)
+    })
+    .catch(error => {
+      console.error('Error posting comment:', error);
+      alert('댓글 작성에 실패했습니다.');
+    });
 }
 
 function deleteReview() {
@@ -183,14 +180,14 @@ function deleteReview() {
       Authorization: `Token ${authStore.token}`
     }
   })
-  .then(() => {
-    alert('리뷰가 삭제되었습니다.');
-    router.push('/reviews');
-  })
-  .catch(error => {
-    console.error('Error deleting review:', error);
-    alert('리뷰 삭제에 실패했습니다.');
-  });
+    .then(() => {
+      alert('리뷰가 삭제되었습니다.');
+      router.push('/reviews');
+    })
+    .catch(error => {
+      console.error('Error deleting review:', error);
+      alert('리뷰 삭제에 실패했습니다.');
+    });
 }
 
 function editReview() {
@@ -254,7 +251,8 @@ function editReview() {
 }
 
 .btn-action.delete:hover {
-  color: #ff3b30; /* Red color for delete action */
+  color: #ff3b30;
+  /* Red color for delete action */
 }
 
 .post-title {
@@ -277,12 +275,13 @@ function editReview() {
   margin-bottom: 40px;
   border-radius: 24px;
   overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 }
 
 .video-container {
   position: relative;
-  padding-bottom: 56.25%; /* 16:9 비율 */
+  padding-bottom: 56.25%;
+  /* 16:9 비율 */
   height: 0;
 }
 
@@ -296,10 +295,7 @@ function editReview() {
 
 /* 본문 영역 스타일 */
 .review-content-wrapper {
-  background: var(--c-card-background);
-  padding: 40px;
-  border-radius: 24px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+  /* 카드 스타일은 base.css .card로 대체됨 */
   margin-bottom: 40px;
 }
 
@@ -309,18 +305,7 @@ function editReview() {
   border-top: 1px solid var(--c-input-border);
 }
 
-.btn-secondary {
-  background-color: var(--c-input-background);
-  color: var(--c-text-primary);
-  padding: 12px 24px;
-  border-radius: 12px;
-  font-weight: 600;
-  transition: all 0.2s;
-}
-
-.btn-secondary:hover {
-  background-color: #e8e8ed;
-}
+/* .btn-secondary 스타일은 base.css로 대체됨 */
 
 /* 댓글 섹션 스타일 */
 .comments-section {
@@ -335,29 +320,15 @@ function editReview() {
 }
 
 .comment-form-wrapper {
-  background: var(--c-card-background);
-  padding: 24px;
-  border-radius: 16px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  /* 카드 스타일은 base.css .card로 대체됨 */
+  padding: 24px; /* 댓글 폼은 기본 카드 패딩(40px)보다 좁게 설정하고 싶으면 여기서 재정의 */
   margin-bottom: 30px;
 }
 
 .comment-form textarea {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid var(--c-input-border);
-  border-radius: 12px;
-  background-color: var(--c-input-background);
-  color: var(--c-input-text);
+  /* 기본 textarea 스타일은 base.css로 대체됨 */
   font-size: 15px;
-  resize: vertical;
   min-height: 80px;
-  transition: border-color 0.2s;
-}
-
-.comment-form textarea:focus {
-  outline: none;
-  border-color: var(--c-accent);
 }
 
 .form-actions {
@@ -366,26 +337,12 @@ function editReview() {
   margin-top: 10px;
 }
 
-.btn-submit {
-  background-color: var(--c-accent);
-  color: white;
-  border: none;
-  padding: 8px 20px;
-  border-radius: 20px;
+/* .btn-submit 스타일은 base.css .btn-primary로 대체됨 */
+.btn-primary {
+  width: auto; /* 댓글 등록 버튼은 full width가 아님 */
+  padding: 8px 20px; /* 크기 조정 */
+  border-radius: 20px; /* 둥근 모양 유지 */
   font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.btn-submit:disabled {
-  background-color: var(--c-text-secondary);
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.btn-submit:hover:not(:disabled) {
-  background-color: #0077ed;
 }
 
 .login-plz {
@@ -430,7 +387,8 @@ function editReview() {
   color: var(--c-text-primary);
   line-height: 1.5;
   font-size: 15px;
-  white-space: pre-wrap; /* 줄바꿈 유지 */
+  white-space: pre-wrap;
+  /* 줄바꿈 유지 */
 }
 
 .no-comments {
@@ -443,7 +401,7 @@ function editReview() {
   .post-title {
     font-size: 32px;
   }
-  
+
   .review-content-wrapper {
     padding: 24px;
   }

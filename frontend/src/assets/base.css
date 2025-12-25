@@ -13,6 +13,7 @@
   --c-border: #d2d2d7;
 
   --c-accent: #0071e3; /* Apple Blue */
+  --c-danger: #ff3b30; /* Apple Red */
   
   /* Chatbot colors */
   --c-chat-bubble-user: #007aff;
@@ -56,20 +57,22 @@
 
 /* Global Input Styles */
 input, textarea, select {
+  width: 100%; /* Default to full width for forms */
   background-color: var(--c-input-background);
   color: var(--c-input-text);
   border: 1px solid var(--c-input-border);
-  border-radius: 8px;
-  padding: 8px 12px;
+  border-radius: 12px;
+  padding: 16px;
   font-family: inherit;
-  font-size: 1rem;
-  transition: border-color 0.2s, background-color 0.2s;
+  font-size: 17px;
+  transition: all 0.2s ease;
 }
 
 input:focus, textarea:focus, select:focus {
   outline: none;
   border-color: var(--c-accent);
   background-color: var(--c-input-background); /* Keep it dark on focus */
+  box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.15);
 }
 
 /* Remove browser default autofill background */
@@ -142,23 +145,95 @@ a:hover {
   text-decoration: underline;
 }
 
+/* Buttons */
 button, .btn {
   font-family: var(--font-family-base);
   cursor: pointer;
   border: none;
-  border-radius: 980px; /* Fully rounded */
+  border-radius: 980px; /* Fully rounded by default, override for forms */
   padding: 12px 24px;
   font-size: 17px;
-  font-weight: 400;
+  font-weight: 600;
   transition: all 0.2s ease;
-  background-color: var(--c-accent);
-  color: white;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
   text-decoration: none;
-  display: inline-block;
 }
 
-button:hover, .btn:hover {
-  background-color: #0077ed; /* Slightly lighter on hover */
-  transform: scale(1.02);
-  text-decoration: none;
+button:disabled, .btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: var(--c-accent);
+  color: white;
+  border-radius: 12px; /* Slightly less rounded for forms */
+  width: 100%;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #0077ed;
+  transform: scale(1.01);
+}
+
+.btn-secondary {
+  background-color: var(--c-input-background);
+  color: var(--c-text-primary);
+  border-radius: 12px;
+}
+
+.btn-secondary:hover {
+  background-color: #e8e8ed; /* Or appropriate hover color */
+}
+
+.btn-text {
+  background: none;
+  color: var(--c-accent);
+  padding: 0;
+  font-weight: 500;
+}
+
+.btn-text:hover {
+  text-decoration: underline;
+  background: none;
+  transform: none;
+}
+
+/* Card & Containers */
+.card {
+  background: var(--c-card-background);
+  padding: 40px;
+  border-radius: 24px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-text-primary);
+  margin-bottom: 8px;
+  margin-left: 4px;
+}
+
+.page-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.page-header h1 {
+  font-size: 32px; /* Standardize size */
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.page-header p {
+  font-size: 15px;
+  color: var(--c-text-secondary);
 }

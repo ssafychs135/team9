@@ -369,22 +369,24 @@ function handleSend() {
   display: flex;
   align-items: center;
   gap: 10px;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
 }
 
 .input-wrapper:focus-within {
   background-color: var(--c-input-background);
-  /* Slightly different on focus if needed */
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05);
+  border-color: var(--c-accent);
+  box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.1);
 }
 
 .chat-input {
   flex: 1;
-  border: none;
-  background: transparent;
+  border: none !important;
+  background: transparent !important;
   font-size: 16px;
   padding: 10px;
-  color: var(--c-text-primary);
+  color: var(--c-input-text);
+  box-shadow: none !important;
 }
 
 .chat-input:focus {

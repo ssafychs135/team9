@@ -6,7 +6,7 @@
         <p>기존 리뷰 내용을 수정합니다.</p>
       </div>
 
-      <form @submit.prevent="submitReview" class="review-form">
+      <form @submit.prevent="submitReview" class="review-form card">
         <div class="form-group">
           <label for="title">리뷰 제목</label>
           <input type="text" id="title" v-model="title" placeholder="예: 아이폰 15 프로 사용기" />
@@ -31,8 +31,8 @@
         </div>
 
         <div class="form-actions">
-          <button type="button" class="btn-cancel" @click="$router.back()">취소</button>
-          <button type="submit" class="btn-submit">수정 완료</button>
+          <button type="button" class="btn-text" @click="$router.back()">취소</button>
+          <button type="submit" class="btn-primary">수정 완료</button>
         </div>
       </form>
     </div>
@@ -168,35 +168,8 @@ function submitReview() {
   margin: 0 auto;
 }
 
-.page-header {
-  text-align: center;
-  margin-bottom: 40px;
-}
-
-.page-header h1 {
-  font-size: 32px;
-  font-weight: 700;
-  margin-bottom: 10px;
-}
-
 .review-form {
-  background: var(--c-card-background);
-  padding: 40px;
-  border-radius: 24px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
-}
-
-.form-group {
-  margin-bottom: 24px;
-}
-
-.form-group label {
-  display: block;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--c-text-primary);
-  margin-bottom: 8px;
-  margin-left: 4px;
+  /* 카드 스타일은 base.css .card로 대체됨 */
 }
 
 /* 통합형 입력창 래퍼 스타일 */
@@ -251,28 +224,6 @@ function submitReview() {
   cursor: not-allowed;
 }
 
-input,
-textarea {
-  width: 100%;
-  padding: 16px;
-  border: 1px solid var(--c-input-border);
-  border-radius: 12px;
-  font-size: 16px;
-  font-family: inherit;
-  resize: vertical;
-  background-color: var(--c-input-background);
-  color: var(--c-input-text);
-  transition: all 0.2s ease;
-}
-
-input:focus,
-textarea:focus {
-  outline: none;
-  border-color: #0071e3;
-  background-color: var(--c-input-background);
-  box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.15);
-}
-
 .textarea-wrapper {
   position: relative;
 }
@@ -282,24 +233,11 @@ textarea:focus {
   justify-content: flex-end;
   gap: 12px;
   margin-top: 40px;
+  align-items: center;
 }
 
-.btn-submit {
-  padding: 12px 30px;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.btn-cancel {
-  background-color: transparent;
-  color: #86868b;
-  padding: 12px 20px;
-  font-size: 16px;
-}
-
-.btn-cancel:hover {
-  background-color: rgba(0, 0, 0, 0.05);
-  color: #1d1d1f;
-  transform: none;
+/* .btn-submit, .btn-cancel 스타일은 base.css로 대체됨 */
+.btn-primary {
+  width: auto; /* 폼 버튼 너비 조정 */
 }
 </style>
