@@ -280,12 +280,13 @@ onMounted(() => {
   color: var(--c-text-secondary);
   line-height: 1.5;
   flex: 1;
-  /* Line Clamp: 3줄 제한 */
+  /* Line Clamp: 3줄 제한 설정 보강 */
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
+  word-break: break-all; /* 긴 단어 줄바꿈 방지 */
 }
 
 .card-link {
