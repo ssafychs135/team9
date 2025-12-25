@@ -1,0 +1,84 @@
+{
+    "Size and weight": {
+        "Height": "4.5 inches (115 mm)",
+        "Width": "2.4 inches (61 mm)",
+        "Depth": "0.46 inch (11.6 mm)",
+        "Weight": "4.8 ounces (135 grams)"
+    },
+    "In the box": [
+        "iPhone",
+        "Stereo Headset",
+        "Dock",
+        "Dock Connector to USB Cable",
+        "USB Power Adapter",
+        "Documentation",
+        "Cleaning/polishing cloth"
+    ],
+    "Capacity": [
+        "8GB or 16GB flash drive1"
+    ],
+    "Display": [
+        "3.5-inch (diagonal) widescreen Multi-Touch display",
+        "480-by-320-pixel resolution at 163 ppi",
+        "Support for display of multiple languages and characters simultaneously"
+    ],
+    "Operating system": [
+        "iOS"
+    ],
+    "GSM": [
+        "Quad-band (850, 900, 1800, 1900 MHz)"
+    ],
+    "Wireless data": [
+        "Wi-Fi (802.11b/g)",
+        "EDGE",
+        "Bluetooth 2.0+EDR"
+    ],
+    "Camera": [
+        "2.0 megapixels"
+    ],
+    "Audio": {
+        "Frequency response": "20Hz to 20,000Hz",
+        "Audio formats supported": "AAC, Protected AAC, MP3, MP3 VBR, Audible (formats 1, 2, and 3), Apple Lossless, AIFF, and WAV"
+    },
+    "Video": {
+        "Video formats supported": "H.264 video, up to 1.5 Mbps, 640 by 480 pixels, 30 frames per second, Low-Complexity version of the H.264 Baseline Profile with AAC-LC audio up to 160 Kbps, 48kHz, stereo audio in .m4v, .mp4, and .mov file formats; H.264 video, up to 768 Kbps, 320 by 240 pixels, 30 frames per second, Baseline Profile up to Level 1.3 with AAC-LC audio up to 160 Kbps, 48kHz, stereo audio in .m4v, .mp4, and .mov file formats; MPEG-4 video, up to 2.5 Mbps, 640 by 480 pixels, 30 frames per second, Simple Profile with AAC-LC audio up to 160 Kbps, 48kHz, stereo audio in .m4v, .mp4, and .mov file formats"
+    },
+    "Headphones": {
+        "Frequency response": "20Hz to 20,000Hz",
+        "Impedance": "32 ohms",
+        "기타": [
+            "Stereo earphones with built-in microphone"
+        ]
+    },
+    "Mac system requirements": [
+        "Mac computer with USB 2.0 port",
+        "Mac OS X v10.4.10 or later",
+        "iTunes 7.5 or later"
+    ],
+    "Windows system requirements": [
+        "PC with USB 2.0 port",
+        "Windows Vista Home Premium, Business, Enterprise, or Ultimate Edition; or Windows XP Home or Professional with Service Pack 2 or later",
+        "iTunes 7.5 or later"
+    ],
+    "Environmental requirements": {
+        "Operating temperature": "32° to 95° F (0° to 35° C)",
+        "Nonoperating temperature": "-4° to 113° F (-20° to 45° C)",
+        "Relative humidity": "5% to 95% noncondensing",
+        "Maximum operating altitude": "10,000 feet (3000 m)"
+    },
+    "Input and output": [
+        "iPhone30-pin dock connector3.5-mm stereo headphone minijack",
+        "iPhone DockDock connector"
+    ],
+    "Power and battery": {
+        "Talk time": "Up to 8 hours2",
+        "Standby time": "Up to 250 hours3",
+        "Internet use": "Up to 6 hours4",
+        "Video playback": "Up to 7 hours5",
+        "Audio playback": "Up to 24 hours6",
+        "기타": [
+            "Built-in rechargeable lithium ion battery"
+        ]
+    },
+    "출시 일자": "2007-06-29"
+}

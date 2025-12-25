@@ -1,0 +1,18 @@
+@import './base.css';
+
+#app {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100vh; /* min-height 대신 height 고정 */
+  overflow: hidden; /* 전체 화면 스크롤 제거 */
+}
+
+/* Container for centered content */
+.container {
+  max-width: 980px; /* Apple standard width */
+  margin: 0 auto;
+  padding: 0 22px;
+}

@@ -1,4 +1,4 @@
-# team9
+# pjt-06
 
 
 
@@ -15,14 +15,14 @@ Already a pro? Just edit this README.md and make it your own. Want to make it ea
 
 ```
 cd existing_repo
-git remote add origin https://lab.ssafy.com/sunnychoi135/team9.git
+git remote add origin https://lab.ssafy.com/sunnychoi135/pjt-06.git
 git branch -M master
 git push -uf origin master
 ```
 
 ## Integrate with your tools
 
-- [ ] [Set up project integrations](https://lab.ssafy.com/sunnychoi135/team9/-/settings/integrations)
+- [ ] [Set up project integrations](https://lab.ssafy.com/sunnychoi135/pjt-06/-/settings/integrations)
 
 ## Collaborate with your team
 

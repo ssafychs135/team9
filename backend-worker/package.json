@@ -1,0 +1,28 @@
+{
+  "name": "review_site",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "echo \"No specific build command configured yet. Please replace this with your actual build command (e.g., 'react-scripts build', 'next build', 'webpack').\"",
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "dev:all": "concurrently \"python manage.py runserver\" \"npm run dev\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "nodemon": "^3.1.10",
+    "youtube-caption-extractor": "^1.9.1"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

@@ -1,0 +1,136 @@
+/* Apple-inspired color palette & variables */
+:root {
+  --c-white: #ffffff;
+  --c-background: #fbfbfd; /* Apple website background usually */
+  --c-background-secondary: #f5f5f7;
+  
+  --c-text-primary: #1d1d1f;
+  --c-text-secondary: #86868b;
+  --c-text-link: #06c;
+  --c-text-link-hover: #004990;
+
+  --c-divider: #d2d2d7;
+  --c-border: #d2d2d7;
+
+  --c-accent: #0071e3; /* Apple Blue */
+  
+  /* Chatbot colors */
+  --c-chat-bubble-user: #007aff;
+  --c-chat-text-user: #ffffff;
+  --c-chat-bubble-bot: #e9e9eb;
+  --c-chat-text-bot: #000000;
+
+  /* UI Elements */
+  --c-card-background: #ffffff;
+  --c-input-background: #fafafc;
+  --c-input-text: #1d1d1f;
+  --c-input-border: #d2d2d7;
+  --c-nav-background: rgba(251, 251, 253, 0.8);
+
+  --font-family-base: "SF Pro Text", "SF Pro Icons", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+  --font-family-display: "SF Pro Display", "SF Pro Icons", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --c-background: #000000;
+    --c-background-secondary: #1d1d1f;
+    
+    --c-text-primary: #f5f5f7;
+    --c-text-secondary: #86868b;
+    
+    --c-divider: #424245;
+    --c-border: #424245;
+
+    --c-chat-bubble-bot: #26262a;
+    --c-chat-text-bot: #ffffff;
+
+    /* UI Elements Dark */
+    --c-card-background: #1c1c1e;
+    --c-input-background: #1d1d1f;
+    --c-input-text: #424245;
+    --c-input-border: #ffffff;
+    --c-nav-background: rgba(0, 0, 0, 0.8);
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: var(--font-family-base);
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--c-background);
+  color: var(--c-text-primary);
+  line-height: 1.47059;
+  letter-spacing: -0.022em;
+  /* overflow-y: scroll; 를 제거하여 필요한 경우에만 스크롤바가 생기도록 합니다. */
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+}
+
+/* Typography Defaults */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-family-display);
+  font-weight: 600;
+  color: var(--c-text-primary);
+  margin-bottom: 0.5em;
+}
+
+h1 {
+  font-size: 48px;
+  line-height: 1.08349;
+  letter-spacing: -0.003em;
+}
+
+h2 {
+  font-size: 32px;
+  line-height: 1.125;
+}
+
+p {
+  margin-bottom: 1em;
+  color: var(--c-text-secondary);
+}
+
+a {
+  color: var(--c-text-link);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--c-text-link-hover);
+  text-decoration: underline;
+}
+
+button, .btn {
+  font-family: var(--font-family-base);
+  cursor: pointer;
+  border: none;
+  border-radius: 980px; /* Fully rounded */
+  padding: 12px 24px;
+  font-size: 17px;
+  font-weight: 400;
+  transition: all 0.2s ease;
+  background-color: var(--c-accent);
+  color: white;
+  text-decoration: none;
+  display: inline-block;
+}
+
+button:hover, .btn:hover {
+  background-color: #0077ed; /* Slightly lighter on hover */
+  transform: scale(1.02);
+  text-decoration: none;
+}

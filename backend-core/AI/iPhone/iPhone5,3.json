@@ -1,0 +1,53 @@
+{
+    "name": "iPhone 5c (GSM)",
+    "identifier": "iPhone5,3",
+    "soc": "A6",
+    "cpid": "0x8950",
+    "arch": "armv7s",
+    "type": "iPhone",
+    "board": "N48AP",
+    "bdid": "0x0A",
+    "model": [
+        "A1456",
+        "A1532"
+    ],
+    "released": "2013-09-20",
+    "colors": [
+        {
+            "name": "Blue",
+            "hex": "40B0EA",
+            "released": "2013-09-20"
+        },
+        {
+            "name": "Green",
+            "hex": "98E467",
+            "released": "2013-09-20"
+        },
+        {
+            "name": "Pink",
+            "hex": "FF6C6C",
+            "released": "2013-09-20"
+        },
+        {
+            "name": "White",
+            "hex": "F0F0F2",
+            "released": "2013-09-20"
+        },
+        {
+            "name": "Yellow",
+            "hex": "FFEF6F",
+            "released": "2013-09-20"
+        }
+    ],
+    "info": [
+        {
+            "type": "Memory",
+            "Storage": [
+                "16GB",
+                "32GB",
+                "64GB"
+            ],
+            "RAM": "1GB LPDDR2"
+        }
+    ]
+}
