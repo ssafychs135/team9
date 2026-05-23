@@ -683,3 +683,6 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/windows,macos,python,node,django,git,visualstudiocode,pycharm+all,pycharm,venv,dotenv,virtualenv
+# Local QA / agent-internal artifacts
+.qa-screenshots/
+.serena/

@@ -1,13 +1,19 @@
 import os
 import json
 import glob
+import unicodedata
 from django.core.management.base import BaseCommand, CommandError
 from dotenv import load_dotenv
 
-# Langchain 및 Upstage 관련 임포트
+
+def _nfkc(text):
+    """문자열을 NFKC 정규화. NBSP·전각/반각 등 호환 문자를 표준 형태로 통일."""
+    return unicodedata.normalize('NFKC', text)
+
+# Langchain 임포트 — 임베딩은 LM Studio (EmbeddingGemma) 사용
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import Chroma
-from langchain_upstage import UpstageEmbeddings
+from langchain_chroma import Chroma
+from AI.lm_studio import EmbeddingGemmaEmbeddings
 from langchain_core.documents import Document
 
 # ChromaDB 클라이언트 임포트
@@ -18,7 +24,7 @@ from tqdm import tqdm
 load_dotenv()
 
 class Command(BaseCommand):
-    help = 'crawled_data 폴더의 iPhone JSON 파일에서 스펙 데이터를 로드하여 UpstageEmbeddings로 임베딩하고 ChromaDB에 저장합니다.'
+    help = 'crawled_data 폴더의 iPhone JSON 파일에서 스펙 데이터를 로드하여 LM Studio 의 EmbeddingGemma 로 임베딩하고 ChromaDB에 저장합니다.'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -38,16 +44,14 @@ class Command(BaseCommand):
         collection_name = options['collection_name']
         chroma_path = options['chroma_path']
 
-        upstage_api_key = os.getenv('UPSTAGE_API_KEY')
-        if not upstage_api_key:
-            raise CommandError("UPSTAGE_API_KEY 환경 변수가 설정되지 않았습니다. .env 파일을 확인해주세요.")
-        
-        self.stdout.write(self.style.SUCCESS('Upstage 임베딩 모델을 초기화합니다...'))
+        self.stdout.write(self.style.SUCCESS('LM Studio 의 EmbeddingGemma 어댑터를 초기화합니다...'))
         try:
-            # 문서 임베딩용 모델 사용
-            embeddings = UpstageEmbeddings(model='embedding-passage')
+            # 문서 임베딩용 — title:none | text: prefix 자동 부착
+            embeddings = EmbeddingGemmaEmbeddings()
+        except ValueError as e:
+            raise CommandError(str(e))
         except Exception as e:
-            raise CommandError(f"Upstage 임베딩 모델 초기화에 실패했습니다: {e}")
+            raise CommandError(f"임베딩 모델 초기화에 실패했습니다: {e}")
 
         self.stdout.write(self.style.SUCCESS('ChromaDB 클라이언트를 초기화합니다...'))
         try:
@@ -83,8 +87,9 @@ class Command(BaseCommand):
                 with open(json_file_path, 'r', encoding='utf-8') as f:
                     spec_data = json.load(f)
 
-                # 파일명에서 확장자 제거하여 모델명 추출
+                # 파일명에서 확장자 제거하여 모델명 추출 — NBSP 가 박힌 기존 파일에도 대응
                 model_name = os.path.splitext(os.path.basename(json_file_path))[0]
+                model_name = _nfkc(model_name)
                 
                 # 텍스트 변환 시작
                 text_parts = [f"이 문서는 Apple {model_name} 모델의 상세 스펙 정보를 담고 있습니다."]
@@ -115,13 +120,14 @@ class Command(BaseCommand):
                         # 문자열이나 기타 기본 타입
                         text_parts.append(f": {content}")
 
-                text_content = "\n".join(text_parts)
-                
-                # 메타데이터 구성
+                # 본문 전체 NFKC — JSON 내부의 "True\xa0Tone" 같은 NBSP 들을 일괄 정리
+                text_content = _nfkc("\n".join(text_parts))
+
+                # 메타데이터 구성 (filename 도 정규화하여 메타데이터 일관성 확보)
                 metadata = {
                     "source": "crawled_spec",
                     "model_name": model_name,
-                    "filename": os.path.basename(json_file_path),
+                    "filename": _nfkc(os.path.basename(json_file_path)),
                 }
                 
                 # 출시 일자가 있으면 메타데이터에 추가

@@ -177,3 +177,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://localhost:5173",
 ]
+
+# 챗봇 멀티턴: Django session cookie 를 cross-origin 으로 동반 전송하기 위해
+# credentials 허용. 프론트는 fetch credentials='include' / axios withCredentials=true 필요.
+CORS_ALLOW_CREDENTIALS = True

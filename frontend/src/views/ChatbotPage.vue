@@ -1,5 +1,14 @@
 <template>
   <div class="chatbot-page">
+    <!-- 멀티턴: 새 대화 버튼 (메시지가 있을 때만) -->
+    <button v-if="messages.length > 0" class="new-conversation-btn" @click="newConversation"
+      :disabled="isStreaming" title="새 대화 시작 (대화 기록 초기화)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 5V19M5 12H19" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      <span>새 대화</span>
+    </button>
+
     <!-- 메인 채팅 영역 -->
     <div class="chat-content" ref="chatContentRef">
       <!-- 1. 웰컴 스크린 (메시지가 없을 때) -->
@@ -10,7 +19,8 @@
         </h1>
 
         <div class="suggestion-grid">
-          <button v-for="(chip, index) in suggestions" :key="index" class="suggestion-card" @click="sendMessage(chip)">
+          <button v-for="(chip, index) in suggestions" :key="index" class="suggestion-card"
+            :disabled="isStreaming" @click="sendMessage(chip)">
             <p>{{ chip }}</p>
             <div class="icon-box">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -70,9 +80,13 @@
           </svg>
         </button>
 
-        <input v-model="userInput" @keyup.enter="handleSend" type="text" placeholder="질문을 입력하세요" class="chat-input" />
+        <input v-model="userInput" @keyup.enter="handleSend" type="text"
+          :placeholder="isStreaming ? '답변을 생성하는 중입니다…' : '질문을 입력하세요'"
+          :disabled="isStreaming" class="chat-input" />
 
-        <button class="btn-icon send-msg" :class="{ active: userInput.length > 0 }" @click="handleSend">
+        <button class="btn-icon send-msg"
+          :class="{ active: userInput.length > 0 && !isStreaming }"
+          :disabled="isStreaming" @click="handleSend">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M22 2L11 13M22 2L15 22L11 13M11 13L2 9L22 2" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
@@ -84,16 +98,18 @@
 </template>
 
 <script setup>
-import axios from 'axios';
 import { ref, nextTick, watch } from 'vue';
 import { marked } from 'marked';
 import { useAuthStore } from '@/stores/authStore';
 
 const authStore = useAuthStore();
 
+const API_BASE = 'http://localhost:8000';
+
 const userInput = ref('');
-const isLoading = ref(false);
-const chatContentRef = ref(null); // 채팅창 스크롤 제어를 위한 Ref입니다.
+const isLoading = ref(false);          // SSE 첫 chunk 도착 전까지 typing-dot 표시
+const isStreaming = ref(false);        // 스트림 진행 중 입력 비활성화
+const chatContentRef = ref(null);
 
 const suggestions = [
   "아이폰 15 프로 vs 맥스 비교해줘",
@@ -104,9 +120,6 @@ const suggestions = [
 
 const messages = ref([]);
 
-/**
- * 채팅창을 가장 하단으로 스크롤합니다.
- */
 function scrollToBottom() {
   nextTick(() => {
     if (chatContentRef.value) {
@@ -115,58 +128,154 @@ function scrollToBottom() {
   });
 }
 
-// 메시지 배열이 변경될 때마다 하단으로 스크롤합니다.
-watch(messages, () => {
-  scrollToBottom();
-}, { deep: true });
+watch(messages, () => scrollToBottom(), { deep: true });
+watch(isLoading, (v) => { if (v) scrollToBottom(); });
 
-// 로딩 상태가 바뀔 때(봇 답변 대기 중)도 하단으로 스크롤합니다.
-watch(isLoading, (newVal) => {
-  if (newVal) scrollToBottom();
-});
-
-function sendMessage(text) {
-  // 사용자 메시지 추가
-  messages.value.push({ role: 'user', text: text });
+/**
+ * SSE 스트리밍 + 멀티턴.
+ * - credentials: 'include' 로 Django session cookie 동반 전송 (멀티턴의 전제).
+ * - 매 SSE chunk 도착 시 누적 raw markdown 을 marked.parse 로 점진 렌더.
+ * - 'data: [DONE]' 수신 시 종료.
+ */
+async function sendMessage(text) {
+  messages.value.push({ role: 'user', text });
+  // bot 슬롯 미리 push 해두고 점진 update (raw=markdown source, text=rendered HTML)
+  const botIndex = messages.value.push({ role: 'bot', text: '', raw: '' }) - 1;
   isLoading.value = true;
+  isStreaming.value = true;
 
-  console.log(text)
-
-  axios.post('http://localhost:8000/ai/chatbot/api/', { query: text })
-    .then(response => {
-      // 실제 API 응답 처리
-      console.log('ChatBot response:', response.data);
-      isLoading.value = false;
-      messages.value.push({ role: 'bot', text: marked.parse(response.data.response) });
-    })
-    .catch(error => {
-      console.error('Error fetching ChatBot response:', error);
-      isLoading.value = false;
-      messages.value.push({ role: 'bot', text: '죄송합니다. 답변을 가져오는 중 오류가 발생했습니다.' });
+  try {
+    const res = await fetch(`${API_BASE}/ai/chatbot/stream/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ query: text }),
     });
+    if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
 
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      // SSE event 는 빈 줄(\n\n) 로 구분
+      let sepIdx;
+      while ((sepIdx = buffer.indexOf('\n\n')) !== -1) {
+        const raw = buffer.slice(0, sepIdx);
+        buffer = buffer.slice(sepIdx + 2);
+        if (!raw.startsWith('data: ')) continue;
+        const payload = raw.slice(6);
+        if (payload === '[DONE]') {
+          isStreaming.value = false;
+          return;
+        }
+        try {
+          const obj = JSON.parse(payload);
+          if (obj.chunk) {
+            // 첫 chunk 도착 → typing-dot 사라지고 텍스트 시작
+            if (isLoading.value) isLoading.value = false;
+            messages.value[botIndex].raw += obj.chunk;
+            messages.value[botIndex].text = marked.parse(messages.value[botIndex].raw);
+          } else if (obj.error) {
+            messages.value[botIndex].text = `오류가 발생했어요: ${obj.error}`;
+            isStreaming.value = false;
+            return;
+          }
+        } catch (e) {
+          console.warn('SSE parse error:', payload, e);
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Stream error:', e);
+    messages.value[botIndex].text = '죄송합니다. 답변을 가져오는 중 오류가 발생했습니다.';
+  } finally {
+    isLoading.value = false;
+    isStreaming.value = false;
+  }
 }
 
 function handleSend() {
-  if (!userInput.value.trim()) return;
+  if (!userInput.value.trim() || isStreaming.value) return;
   const text = userInput.value;
   userInput.value = '';
   sendMessage(text);
 }
+
+/** 멀티턴 세션 초기화 — 새 대화 시작. */
+async function newConversation() {
+  if (isStreaming.value) return;
+  try {
+    await fetch(`${API_BASE}/ai/chatbot/reset/`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+  } catch (e) {
+    console.warn('Reset failed:', e);
+  }
+  messages.value = [];
+}
 </script>
 
 <style scoped>
-/* 전체 페이지 레이아웃 */
+/* 전체 페이지 레이아웃
+ * App.vue 의 <main> 이 명시 height 가 없어 height: 100% chain 이 깨짐. 따라서
+ * viewport 에 직접 anchor (fixed) — global-nav(48px) 아래부터 viewport bottom 까지.
+ * 다른 페이지 layout 에는 영향 없음. input-container 의 absolute 도 그대로 동작
+ * (fixed 는 positioned ancestor 로 인정됨). */
 .chatbot-page {
   display: flex;
   flex-direction: column;
-  /* 부모(main) 높이에 꽉 차게 맞춥니다. */
-  height: 100%; 
+  position: fixed;
+  top: 48px;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background-color: var(--c-background);
-  position: relative;
-  /* 페이지 자체의 스크롤을 완전히 막습니다. */
   overflow: hidden;
   width: 100%;
+}
+
+/* 멀티턴: 새 대화 버튼 (우상단 floating) */
+.new-conversation-btn {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--c-background-secondary);
+  color: var(--c-text-primary);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.new-conversation-btn:hover:not(:disabled) {
+  background: var(--c-input-border);
+  border-color: var(--c-accent);
+}
+.new-conversation-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* 입력 비활성화 상태 */
+.chat-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.btn-icon:disabled,
+.suggestion-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .chat-content {

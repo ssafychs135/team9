@@ -44,17 +44,28 @@ def create_env_files():
     print("\n🚀 [진행 중] .env 환경 변수 파일 생성 확인...")
 
     # 1. Backend Core .env 설정
+    # LM Studio 게이트웨이(lmstudio.chs135.com)로 챗+임베딩 모두 서빙되는 구성.
+    # 게이트웨이가 body 의 "model" 필드 기준으로 라우팅하므로 LM_STUDIO_CHAT_MODEL /
+    # LM_STUDIO_EMBED_MODEL 값은 게이트웨이가 인식하는 식별자여야 합니다.
     core_env_path = os.path.join(BACKEND_CORE_DIR, ".env")
+    core_env_content = {
+        "SECRET_KEY": "django-insecure-change-me-now",
+        "DEBUG": "True",
+        "ALLOWED_HOSTS": "*",
+        # --- LM Studio (LLM + 임베딩) — 외부 게이트웨이로 서빙 중 ---
+        # lmstudio.chs135.com 은 body 의 "model" 필드 기준으로 백엔드 인스턴스에 라우팅한다.
+        # LM_STUDIO_API_KEY 는 Bearer 토큰으로 사용되므로 반드시 실제 키로 교체해야 한다.
+        "LM_STUDIO_BASE_URL": "https://lmstudio.chs135.com/v1",
+        "LM_STUDIO_API_KEY": "",
+        "LM_STUDIO_CHAT_MODEL": "gemma-4-e4b-it",
+        "LM_STUDIO_EMBED_MODEL": "text-embedding-embeddinggemma-300m",
+        # --- Legacy (Upstage Solar 미사용, 호환성 위해 빈 값) ---
+        "UPSTAGE_API_KEY": "",
+        "OPENAI_API_KEY": "",
+        "CHROMA_DB_PATH": "./chroma_db",
+        "CHROMA_DB_PATH_CRAWLED": "./chroma_db_crawled",
+    }
     if not os.path.exists(core_env_path):
-        core_env_content = {
-            "SECRET_KEY": "django-insecure-change-me-now",
-            "DEBUG": "True",
-            "ALLOWED_HOSTS": "*",
-            "UPSTAGE_API_KEY": "",
-            "OPENAI_API_KEY": "",
-            "CHROMA_DB_PATH": "./chroma_db",
-            "CHROMA_DB_PATH_CRAWLED": "./chroma_db_crawled"
-        }
         try:
             with open(core_env_path, "w", encoding="utf-8") as f:
                 for key, value in core_env_content.items():
@@ -63,7 +74,23 @@ def create_env_files():
         except Exception as e:
             print(f"❌ [실패] backend-core/.env 생성 중 오류: {e}")
     else:
-        print("ℹ️  [정보] backend-core/.env 파일이 이미 존재합니다.")
+        # 기존 .env 가 있으면 보호하되, 새로 추가된 키가 누락됐는지 검사하여 안내
+        try:
+            existing_keys = set()
+            with open(core_env_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    if "=" in line and not line.strip().startswith("#"):
+                        existing_keys.add(line.split("=", 1)[0].strip())
+            missing = [k for k in core_env_content if k not in existing_keys]
+            if missing:
+                print("ℹ️  [정보] backend-core/.env 가 이미 존재합니다.")
+                print("⚠️  [주의] 다음 키가 누락되어 있습니다 — 수동으로 추가해주세요:")
+                for k in missing:
+                    print(f"     {k}={core_env_content[k]}")
+            else:
+                print("ℹ️  [정보] backend-core/.env 파일이 이미 존재합니다.")
+        except Exception as e:
+            print(f"⚠️  [주의] backend-core/.env 검사 중 오류: {e}")
 
     # 2. Backend Worker .env 설정
     worker_env_path = os.path.join(BACKEND_WORKER_DIR, ".env")

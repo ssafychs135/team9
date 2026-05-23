@@ -1,0 +1,1781 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>작은 AI 가 똑똑해지기까지 — iPhone 챗봇 디버깅 deck</title>
+  <style>
+    :root {
+      --bg: #f7f8fc;
+      --slide-bg: #ffffff;
+      --fg: #15171c;
+      --fg-mute: #5a6271;
+      --fg-soft: #8a93a3;
+      --border: #e4e7ee;
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --accent: #f59e0b;
+      --success: #10b981;
+      --danger: #ef4444;
+      --info: #3b82f6;
+      --soft-bg: #f1f3f9;
+    }
+    html.dark {
+      --bg: #0a0d12;
+      --slide-bg: #11151c;
+      --fg: #e9edf3;
+      --fg-mute: #98a2b3;
+      --fg-soft: #5c6675;
+      --border: #1f2733;
+      --soft-bg: #161b22;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0; height: 100%;
+      background: var(--bg); color: var(--fg);
+      font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Noto Sans KR", "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, monospace; }
+    button { font-family: inherit; }
+
+    /* ========= 16:9 Stage ========= */
+    /* 슬라이드는 1280x720 고정 (16:9). JS 가 viewport 에 맞춰 scale.
+       모든 슬라이드 콘텐츠가 비율 그대로 함께 scale 됨 — 진짜 ppt 의 동작. */
+    .deck {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 1280px; height: 720px;
+      transform: translate(-50%, -50%) scale(1);
+      transform-origin: center center;
+      background: var(--slide-bg);
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.1);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    html.dark .deck { box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5); }
+    .slide {
+      position: absolute; inset: 0;
+      display: none; flex-direction: column;
+      padding: 60px 80px 90px;
+      background: var(--slide-bg);
+      animation: fadeIn 0.25s ease-out;
+      overflow: hidden;
+    }
+    .slide.active { display: flex; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .slide-eyebrow {
+      font-size: 12px; font-weight: 600; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--primary);
+      margin-bottom: 14px;
+    }
+    .slide-title {
+      font-size: 42px; font-weight: 800; line-height: 1.15;
+      letter-spacing: -0.02em; margin: 0 0 14px;
+    }
+    .slide-title .em { color: var(--primary); }
+    .slide-lede {
+      font-size: 18px; line-height: 1.55; color: var(--fg-mute);
+      max-width: 800px; margin-bottom: 26px;
+    }
+
+    /* ========= Top controls ========= */
+    .top-controls {
+      position: absolute; top: 20px; right: 28px;
+      display: flex; gap: 10px; z-index: 30; align-items: center;
+    }
+    .nav-hint-inline {
+      font-size: 11px; color: var(--fg-soft);
+      pointer-events: none;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .nav-hint-inline kbd {
+      font-family: inherit; padding: 2px 6px; margin: 0 1px;
+      border: 1px solid var(--border); border-radius: 4px;
+      font-size: 10px; background: var(--slide-bg); color: var(--fg-mute);
+    }
+    .ctrl-btn {
+      font-size: 12px; padding: 6px 12px;
+      border: 1px solid var(--border); border-radius: 8px;
+      background: var(--slide-bg); color: var(--fg-mute);
+      cursor: pointer; transition: all 0.15s;
+    }
+    .ctrl-btn:hover { border-color: var(--fg-mute); color: var(--fg); }
+
+    /* ========= Dock (좌측 정렬 — 슬라이드 우측 콘텐츠와 겹치지 않게) ========= */
+    .dock {
+      position: absolute; left: 0; bottom: 0;
+      padding: 14px 28px 18px 28px;
+      display: inline-flex; align-items: center; gap: 14px;
+      z-index: 20; pointer-events: none;
+      background: linear-gradient(to top, var(--slide-bg) 55%, transparent);
+      border-bottom-left-radius: 6px;
+    }
+    .dots { display: flex; gap: 7px; pointer-events: auto; }
+    .dot {
+      width: 9px; height: 9px; border-radius: 50%;
+      background: var(--border); cursor: pointer; transition: all 0.15s;
+    }
+    .dot.active { background: var(--primary); transform: scale(1.3); }
+    .dot:hover { background: var(--fg-mute); }
+    .counter {
+      font-size: 12px; color: var(--fg-soft);
+      font-variant-numeric: tabular-nums; margin-left: 6px;
+      pointer-events: auto;
+    }
+    .nav-hint {
+      font-size: 11px; color: var(--fg-soft); pointer-events: auto;
+      margin-left: 10px;
+    }
+    .nav-hint kbd {
+      font-family: inherit; padding: 2px 6px; margin: 0 2px;
+      border: 1px solid var(--border); border-radius: 4px;
+      font-size: 10px; background: var(--bg);
+    }
+    .nav-btn {
+      pointer-events: auto;
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 1px solid var(--border); background: var(--slide-bg);
+      color: var(--fg); cursor: pointer; font-size: 18px; line-height: 0;
+    }
+    .nav-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .nav-btn:disabled { opacity: 0.25; cursor: default; }
+
+    /* ========= S1 — Hero ========= */
+    .hero {
+      flex: 1; display: grid; grid-template-columns: 1.2fr 1fr;
+      align-items: center; gap: 60px;
+    }
+    .hero-left h1 {
+      font-size: 64px; font-weight: 900; line-height: 1.1;
+      letter-spacing: -0.025em; margin: 0;
+    }
+    .hero-left h1 .gradient {
+      background: linear-gradient(90deg, var(--primary), #ec4899);
+      -webkit-background-clip: text; background-clip: text;
+      color: transparent;
+    }
+    .hero-left p {
+      font-size: 20px; color: var(--fg-mute); line-height: 1.55;
+      margin: 24px 0 32px; max-width: 580px;
+    }
+    .hero-meta {
+      display: flex; gap: 28px; padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+    .hero-meta div { font-size: 13px; color: var(--fg-mute); }
+    .hero-meta strong {
+      display: block; color: var(--fg); margin-bottom: 4px;
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .hero-illust {
+      position: relative; height: 460px; display: flex; align-items: center; justify-content: center;
+    }
+    .hero-illust svg { width: 100%; height: 100%; }
+    .pulse { animation: pulse 2.4s ease-in-out infinite; }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
+    }
+    .float-1 { animation: float 3s ease-in-out infinite; }
+    .float-2 { animation: float 3.5s ease-in-out infinite 0.5s; }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    /* ========= S2 — What I built (chatbot demo) ========= */
+    .demo-grid {
+      flex: 1; display: grid; grid-template-columns: 1fr 1.3fr; gap: 48px;
+      align-items: center;
+    }
+    .demo-left h2 { font-size: 38px; font-weight: 800; margin: 0 0 14px; line-height: 1.2; }
+    .demo-left p { font-size: 17px; color: var(--fg-mute); line-height: 1.55; }
+    .demo-left .chip {
+      display: inline-block; font-size: 12px; padding: 4px 12px;
+      border-radius: 14px; background: var(--soft-bg); color: var(--fg-mute);
+      margin: 4px 6px 0 0;
+    }
+    .demo-chat {
+      background: var(--soft-bg); border-radius: 18px; padding: 28px;
+      box-shadow: 0 8px 28px rgba(99, 102, 241, 0.08);
+      border: 1px solid var(--border);
+      max-height: 580px; display: flex; flex-direction: column;
+    }
+    .demo-chat-header {
+      display: flex; align-items: center; gap: 10px;
+      padding-bottom: 16px; margin-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .demo-chat-header .dot-icon {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), #ec4899);
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: 700;
+    }
+    .demo-chat-header .title { font-weight: 700; font-size: 14px; }
+    .demo-chat-header .status { font-size: 11px; color: var(--success); margin-left: auto; }
+    .demo-chat-header .status::before {
+      content: ""; display: inline-block; width: 6px; height: 6px;
+      border-radius: 50%; background: var(--success); margin-right: 5px;
+    }
+    .demo-msgs {
+      flex: 1; display: flex; flex-direction: column; gap: 12px;
+      overflow-y: auto; min-height: 280px;
+    }
+    .msg {
+      max-width: 80%; padding: 12px 16px; border-radius: 14px;
+      font-size: 14px; line-height: 1.55;
+      animation: msgIn 0.3s ease-out;
+    }
+    @keyframes msgIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .msg.user {
+      align-self: flex-end; background: var(--primary); color: white;
+      border-bottom-right-radius: 4px;
+    }
+    .msg.bot {
+      align-self: flex-start; background: white; color: var(--fg);
+      border: 1px solid var(--border); border-bottom-left-radius: 4px;
+    }
+    html.dark .msg.bot { background: var(--slide-bg); }
+    .typing {
+      align-self: flex-start; background: white; padding: 12px 16px;
+      border-radius: 14px; border-bottom-left-radius: 4px;
+      border: 1px solid var(--border);
+      display: inline-flex; gap: 4px;
+    }
+    html.dark .typing { background: var(--slide-bg); }
+    .typing span {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--fg-soft); animation: blink 1.4s infinite;
+    }
+    .typing span:nth-child(2) { animation-delay: 0.2s; }
+    .typing span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes blink {
+      0%, 60%, 100% { opacity: 0.3; }
+      30% { opacity: 1; }
+    }
+    .demo-quick {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      padding-top: 14px; border-top: 1px solid var(--border); margin-top: 14px;
+    }
+    .quick-btn {
+      font-size: 12.5px; padding: 8px 14px; border-radius: 20px;
+      border: 1px solid var(--border); background: var(--slide-bg);
+      color: var(--fg); cursor: pointer; transition: all 0.15s;
+    }
+    .quick-btn:hover {
+      border-color: var(--primary); color: var(--primary);
+      transform: translateY(-1px);
+    }
+    .quick-btn:disabled { opacity: 0.4; cursor: default; transform: none; }
+
+    /* ========= S3 — Challenge ========= */
+    .versus {
+      flex: 1; display: grid; grid-template-columns: 1fr auto 1fr; gap: 40px;
+      align-items: center;
+    }
+    .vs-card {
+      padding: 36px 32px; border-radius: 16px; text-align: center;
+      border: 2px solid var(--border); background: var(--soft-bg);
+    }
+    .vs-card.highlight {
+      border-color: var(--primary);
+      background: linear-gradient(135deg, rgba(99,102,241,0.06), rgba(236,72,153,0.04));
+      transform: scale(1.03);
+      box-shadow: 0 12px 32px rgba(99,102,241,0.12);
+    }
+    .vs-card .emoji { font-size: 56px; }
+    .vs-card h3 { font-size: 24px; margin: 12px 0 8px; }
+    .vs-card .label { font-size: 13px; color: var(--fg-mute); margin-bottom: 18px; }
+    .vs-card .specs { font-size: 13px; line-height: 1.7; color: var(--fg); text-align: left; }
+    .vs-card .specs li { margin-bottom: 4px; list-style: none; padding-left: 18px; position: relative; }
+    .vs-card .specs li::before { content: "•"; position: absolute; left: 4px; color: var(--primary); }
+    .vs-divider {
+      font-size: 32px; font-weight: 900; color: var(--fg-soft);
+    }
+    .my-choice {
+      font-size: 14px; padding: 10px 18px; border-radius: 20px;
+      background: var(--primary); color: white; font-weight: 700;
+      display: inline-block; margin-top: 14px;
+    }
+
+    /* ========= S4 — 5 problem cards ========= */
+    .prob-grid {
+      flex: 1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px;
+    }
+    .prob-card {
+      padding: 24px 20px; border: 1px solid var(--border); border-radius: 14px;
+      background: var(--slide-bg); cursor: pointer;
+      display: flex; flex-direction: column; gap: 14px;
+      transition: all 0.2s;
+      position: relative; overflow: hidden;
+    }
+    .prob-card::before {
+      content: ""; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+      background: var(--p-color, var(--primary));
+    }
+    .prob-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 16px 36px rgba(0,0,0,0.08);
+      border-color: var(--p-color, var(--primary));
+    }
+    .prob-card .icon {
+      font-size: 36px; line-height: 1;
+    }
+    .prob-card .num {
+      font-size: 11px; font-weight: 700; color: var(--fg-soft);
+      letter-spacing: 0.1em;
+    }
+    .prob-card h4 {
+      margin: 0; font-size: 17px; line-height: 1.3;
+    }
+    .prob-card p {
+      margin: 0; font-size: 12.5px; color: var(--fg-mute); line-height: 1.5;
+      flex: 1;
+    }
+    .prob-card .tag {
+      font-size: 10px; color: var(--p-color, var(--primary));
+      font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .prob-card .cta {
+      font-size: 11px; color: var(--p-color, var(--primary)); font-weight: 600;
+      margin-top: auto;
+    }
+
+    /* ========= Problem slide layout ========= */
+    .problem-slide {
+      flex: 1; display: grid; grid-template-columns: 1fr 1.4fr; gap: 50px;
+      align-items: center;
+    }
+    .problem-left { display: flex; flex-direction: column; gap: 18px; }
+    .problem-num {
+      font-size: 13px; font-weight: 700; color: var(--p-color);
+      letter-spacing: 0.14em; text-transform: uppercase;
+    }
+    .problem-left h2 {
+      font-size: 36px; font-weight: 800; line-height: 1.2; margin: 0;
+      letter-spacing: -0.01em;
+    }
+    .problem-left .summary {
+      font-size: 16px; color: var(--fg-mute); line-height: 1.55;
+    }
+    .problem-tech {
+      padding: 14px 16px;
+      border-radius: 10px;
+      background: var(--soft-bg);
+      border: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--fg-mute);
+      line-height: 1.55;
+    }
+    .problem-tech h5 {
+      margin: 0 0 8px;
+      font-size: 10px; color: var(--fg-soft);
+      text-transform: uppercase; letter-spacing: 0.08em;
+      font-weight: 700;
+    }
+    .problem-tech ul {
+      margin: 0; padding-left: 0;
+      display: flex; flex-direction: column; gap: 6px;
+      list-style: none;
+    }
+    .problem-tech li {
+      font-size: 12px; line-height: 1.5;
+      padding-left: 14px; position: relative;
+    }
+    .problem-tech li::before {
+      content: ""; position: absolute; left: 0; top: 8px;
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--p-color, var(--primary));
+    }
+    .problem-tech strong { color: var(--fg); font-weight: 600; }
+    .problem-tech code {
+      background: var(--slide-bg); padding: 1px 5px; border-radius: 3px;
+      font-size: 10.5px; border: 1px solid var(--border);
+      font-family: "JetBrains Mono", monospace;
+      color: var(--fg-mute);
+    }
+    .problem-tech .term {
+      color: var(--fg-mute); font-family: "JetBrains Mono", monospace; font-size: 10.5px;
+    }
+
+    /* Interactive area */
+    .interact {
+      background: var(--soft-bg); border-radius: 18px; padding: 30px;
+      border: 1px solid var(--border);
+      min-height: 460px; display: flex; flex-direction: column; gap: 18px;
+    }
+    .interact-label {
+      font-size: 11px; font-weight: 700; color: var(--fg-mute);
+      letter-spacing: 0.1em; text-transform: uppercase;
+    }
+    .interact h3 {
+      margin: 0; font-size: 18px; font-weight: 600;
+    }
+
+    /* ========= S5 — NBSP visualization ========= */
+    .nbsp-toggle {
+      display: flex; gap: 0; background: var(--slide-bg);
+      border-radius: 10px; padding: 4px; border: 1px solid var(--border);
+      align-self: flex-start;
+    }
+    .nbsp-toggle button {
+      padding: 8px 16px; border: none; background: transparent; cursor: pointer;
+      font-size: 13px; color: var(--fg-mute); border-radius: 6px;
+      transition: all 0.15s;
+    }
+    .nbsp-toggle button.active {
+      background: var(--primary); color: white; font-weight: 600;
+    }
+    .text-display {
+      background: var(--slide-bg); padding: 24px;
+      border-radius: 10px; border: 1px solid var(--border);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 20px; min-height: 60px;
+      display: flex; align-items: center; justify-content: center;
+      letter-spacing: 0.02em;
+    }
+    .text-display .normal-space { color: var(--fg); }
+    .text-display .nbsp-marker {
+      display: inline-block;
+      background: var(--danger); color: white;
+      padding: 0 6px; border-radius: 4px; margin: 0 1px;
+      font-size: 14px; font-weight: 700;
+    }
+    .compare-row {
+      display: grid; grid-template-columns: 100px 1fr 60px;
+      gap: 14px; align-items: center; padding: 12px 14px;
+      border-radius: 8px; background: var(--slide-bg); border: 1px solid var(--border);
+    }
+    .compare-row.match { border-color: var(--success); }
+    .compare-row.fail { border-color: var(--danger); }
+    .compare-row .label {
+      font-size: 12px; font-weight: 600; color: var(--fg-mute);
+    }
+    .compare-row .value { font-family: "JetBrains Mono", monospace; font-size: 13px; }
+    .compare-row .verdict { font-size: 22px; text-align: center; }
+    .nbsp-sim-btn {
+      padding: 12px 20px; border: none; border-radius: 10px;
+      background: var(--primary); color: white; font-weight: 600;
+      cursor: pointer; font-size: 14px;
+      align-self: flex-start;
+      transition: all 0.2s;
+    }
+    .nbsp-sim-btn:hover { background: var(--primary-dark); transform: translateY(-1px); }
+    .nbsp-sim-btn.success { background: var(--success); }
+    .sim-result {
+      padding: 14px 18px; border-radius: 10px;
+      font-size: 14px; font-weight: 600;
+      animation: msgIn 0.3s;
+    }
+    .sim-result.fail { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid var(--danger); }
+    .sim-result.ok { background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid var(--success); }
+
+    /* ========= S6 — Determinism (3 runs) ========= */
+    .run-controls { display: flex; gap: 10px; align-items: center; }
+    .run-btn {
+      padding: 10px 18px; border-radius: 10px; border: none;
+      background: var(--primary); color: white; font-weight: 600;
+      cursor: pointer; font-size: 14px;
+    }
+    .run-btn:hover { background: var(--primary-dark); }
+    .mode-toggle {
+      display: flex; background: var(--slide-bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 3px;
+    }
+    .mode-toggle button {
+      padding: 6px 14px; border: none; background: transparent;
+      cursor: pointer; font-size: 12px; border-radius: 7px; color: var(--fg-mute);
+    }
+    .mode-toggle button.active { background: var(--primary); color: white; font-weight: 600; }
+    .runs-list { display: flex; flex-direction: column; gap: 10px; }
+    .run-row {
+      display: grid; grid-template-columns: 70px 1fr;
+      gap: 14px; align-items: center;
+      padding: 12px 16px; border-radius: 10px;
+      background: var(--slide-bg); border: 1px solid var(--border);
+    }
+    .run-label { font-size: 12px; font-weight: 700; color: var(--fg-mute); }
+    .run-dots { display: flex; gap: 6px; }
+    .result-dot {
+      width: 36px; height: 36px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10.5px; font-weight: 700; color: white;
+      animation: msgIn 0.3s;
+    }
+    .result-dot.match { background: var(--success); }
+    .result-dot.wrong { background: var(--danger); }
+    .result-dot.empty {
+      background: var(--soft-bg); color: var(--fg-soft);
+      border: 1px dashed var(--border);
+    }
+    .verdict-banner {
+      padding: 12px 18px; border-radius: 10px; font-size: 13px; font-weight: 600;
+    }
+    .verdict-banner.fail { background: rgba(239,68,68,0.1); color: var(--danger); border: 1px solid var(--danger); }
+    .verdict-banner.ok { background: rgba(16,185,129,0.1); color: var(--success); border: 1px solid var(--success); }
+
+    /* ========= S7 — Gemma misunderstanding ========= */
+    .question-cards {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    }
+    .q-card {
+      padding: 16px 18px; border-radius: 10px;
+      background: var(--slide-bg); border: 1px solid var(--border);
+      cursor: pointer; transition: all 0.15s;
+    }
+    .q-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+    .q-card .q-text { font-size: 14px; font-weight: 600; }
+    .q-card .q-meaning {
+      font-size: 11px; color: var(--fg-mute); margin-top: 4px;
+    }
+    .q-card.selected { border-color: var(--primary); background: rgba(99,102,241,0.05); }
+    .answer-box {
+      padding: 18px 22px; border-radius: 12px;
+      min-height: 80px;
+      display: flex; align-items: center; gap: 14px;
+      font-size: 15px;
+      transition: all 0.3s;
+    }
+    .answer-box.empty { background: var(--slide-bg); border: 1px dashed var(--border); color: var(--fg-soft); justify-content: center; }
+    .answer-box.wrong { background: rgba(239,68,68,0.08); border: 1px solid var(--danger); color: var(--fg); }
+    .answer-box.right { background: rgba(16,185,129,0.08); border: 1px solid var(--success); color: var(--fg); }
+    .answer-box .ai-emoji { font-size: 28px; }
+    .answer-box strong { font-family: "JetBrains Mono", monospace; }
+
+    /* ========= S8 — Multi-model comparison ========= */
+    .compare-toggle {
+      display: flex; background: var(--slide-bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 3px; align-self: flex-start;
+    }
+    .compare-toggle button {
+      padding: 8px 18px; border: none; background: transparent;
+      cursor: pointer; font-size: 13px; border-radius: 7px; color: var(--fg-mute);
+      font-weight: 500;
+    }
+    .compare-toggle button.active { background: var(--primary); color: white; font-weight: 700; }
+    .chat-bubble {
+      padding: 14px 18px; border-radius: 14px; max-width: 90%;
+      font-size: 13.5px; line-height: 1.6;
+    }
+    .chat-bubble.user {
+      background: var(--primary); color: white;
+      align-self: flex-end; border-bottom-right-radius: 4px;
+    }
+    .chat-bubble.bot {
+      background: var(--slide-bg); border: 1px solid var(--border);
+      align-self: flex-start; border-bottom-left-radius: 4px;
+    }
+    .chat-bubble.bot.bad { border-color: var(--danger); }
+    .chat-bubble.bot.good { border-color: var(--success); }
+    .chat-bubble strong { color: var(--primary); }
+    .chat-bubble ul { margin: 6px 0; padding-left: 18px; }
+    .chat-bubble li { margin-bottom: 2px; }
+
+    /* ========= S9 — LangGraph SVG ========= */
+    .arch-stage {
+      flex: 1; display: flex; flex-direction: column; gap: 14px;
+      min-height: 0;
+    }
+    .arch-controls {
+      display: flex; gap: 12px; align-items: center; justify-content: space-between;
+    }
+    .arch-controls .label { font-size: 13px; color: var(--fg-mute); }
+    .arch-svg-wrap {
+      flex: 1; background: var(--soft-bg); border-radius: 16px;
+      border: 1px solid var(--border);
+      padding: 24px; position: relative; min-height: 0; overflow: hidden;
+    }
+    .arch-svg { width: 100%; height: 100%; }
+    .node-info {
+      position: absolute; bottom: 20px; right: 20px; left: 20px;
+      padding: 14px 44px 14px 18px; border-radius: 12px;
+      background: var(--slide-bg); border: 1px solid var(--primary);
+      font-size: 13px; line-height: 1.5;
+      box-shadow: 0 8px 24px rgba(99,102,241,0.15);
+      animation: msgIn 0.25s;
+    }
+    .node-info strong { color: var(--primary); }
+    .node-info .layman { color: var(--fg); }
+    .node-info .tech {
+      font-family: "JetBrains Mono", monospace; font-size: 11px;
+      color: var(--fg-soft); margin-top: 4px; display: block;
+    }
+    .node-info-close {
+      position: absolute; top: 8px; right: 10px;
+      width: 26px; height: 26px; border-radius: 50%;
+      border: 1px solid var(--border); background: var(--slide-bg);
+      color: var(--fg-mute); cursor: pointer;
+      font-size: 16px; line-height: 1; padding: 0;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .node-info-close:hover { border-color: var(--fg); color: var(--fg); }
+    /* SVG node styles */
+    .svg-node { cursor: pointer; }
+    .node-rect {
+      fill: var(--slide-bg);
+      stroke: var(--border); stroke-width: 1.5;
+      transition: all 0.3s;
+    }
+    .svg-node:hover .node-rect, .svg-node.active .node-rect {
+      stroke: var(--primary); stroke-width: 2.5;
+      filter: drop-shadow(0 4px 12px rgba(99,102,241,0.25));
+    }
+    .svg-node.flowing .node-rect {
+      fill: var(--primary); stroke: var(--primary);
+    }
+    .end-node .node-rect {
+      fill: var(--success); stroke: var(--success);
+    }
+    .end-node .node-text { fill: white; font-weight: 700; }
+    .svg-node.flowing.end-node .node-rect {
+      fill: var(--success); stroke: var(--success);
+    }
+    .node-text {
+      font-family: -apple-system, sans-serif; font-size: 14px; font-weight: 600;
+      fill: var(--fg);
+      pointer-events: none; text-anchor: middle; dominant-baseline: middle;
+      transition: fill 0.3s;
+    }
+    .svg-node.flowing .node-text { fill: white; }
+    .node-sub {
+      font-size: 11px; fill: var(--fg-mute);
+      pointer-events: none; text-anchor: middle;
+      transition: fill 0.3s;
+    }
+    .svg-node.flowing .node-sub { fill: rgba(255,255,255,0.92); }
+    .edge { stroke: var(--fg-soft); stroke-width: 1.5; fill: none; }
+    .edge.active {
+      stroke: var(--primary); stroke-width: 2.5;
+      stroke-dasharray: 6 4; animation: dash 0.8s linear infinite;
+    }
+    @keyframes dash {
+      to { stroke-dashoffset: -20; }
+    }
+    .play-btn {
+      padding: 10px 18px; border-radius: 10px; border: none;
+      background: var(--primary); color: white; font-weight: 600;
+      cursor: pointer; font-size: 13px;
+    }
+    .play-btn:hover { background: var(--primary-dark); }
+    .play-btn:disabled { opacity: 0.5; }
+
+    .before-after-toggle {
+      display: flex; background: var(--slide-bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 3px;
+    }
+    .before-after-toggle button {
+      padding: 8px 16px; border: none; background: transparent; cursor: pointer;
+      font-size: 12px; border-radius: 7px; color: var(--fg-mute); font-weight: 500;
+    }
+    .before-after-toggle button.active {
+      background: var(--primary); color: white; font-weight: 700;
+    }
+
+    .arch-text-area {
+      display: flex; gap: 10px; align-items: stretch;
+    }
+    .arch-text-area > div {
+      flex: 1; padding: 12px 16px; background: var(--soft-bg);
+      border-radius: 10px; border: 1px solid var(--border);
+      font-size: 12.5px; color: var(--fg-mute); line-height: 1.5;
+    }
+    .arch-text-area strong { color: var(--fg); }
+
+    /* ========= S10 — Lessons + roadmap ========= */
+    .lessons-grid {
+      flex: 1; display: grid; grid-template-columns: 1.2fr 1fr; gap: 50px;
+      align-items: stretch;
+    }
+    .lessons-list { display: flex; flex-direction: column; gap: 14px; }
+    .lesson-item {
+      display: grid; grid-template-columns: 48px 1fr; gap: 16px;
+      padding: 18px 20px; border: 1px solid var(--border); border-radius: 12px;
+      background: var(--soft-bg);
+    }
+    .lesson-num {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--primary), #ec4899);
+      color: white; display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 17px;
+    }
+    .lesson-item h4 { margin: 0 0 4px; font-size: 15px; }
+    .lesson-item p { margin: 0; font-size: 12.5px; color: var(--fg-mute); line-height: 1.55; }
+    .roadmap-col h3 { font-size: 22px; margin: 0 0 18px; }
+    .roadmap-card {
+      padding: 18px 20px; border-radius: 12px; border: 1px solid var(--border);
+      background: var(--soft-bg); margin-bottom: 10px;
+    }
+    .roadmap-when {
+      display: inline-block; font-size: 10px; padding: 3px 9px; border-radius: 10px;
+      background: var(--primary); color: white; margin-bottom: 6px;
+      font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .roadmap-card h4 { margin: 4px 0 4px; font-size: 14px; }
+    .roadmap-card p { margin: 0; font-size: 12px; color: var(--fg-mute); line-height: 1.5; }
+    .closing-line {
+      margin-top: 20px; padding: 18px 20px; border-radius: 12px;
+      background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(236,72,153,0.05));
+      border: 1px solid var(--primary);
+      font-size: 14px; line-height: 1.6;
+    }
+
+    /* ========= Misc ========= */
+    .pill {
+      display: inline-block; font-size: 10.5px; padding: 2px 9px; border-radius: 12px;
+      font-weight: 600; letter-spacing: 0.04em;
+    }
+    .pill.ok { background: rgba(16,185,129,0.12); color: var(--success); }
+    .pill.bad { background: rgba(239,68,68,0.12); color: var(--danger); }
+    .pill.info { background: rgba(99,102,241,0.12); color: var(--primary); }
+
+    @media print {
+      .dock, .top-controls { display: none !important; }
+      .slide { display: flex !important; position: relative; height: 100vh; page-break-after: always; }
+    }
+  </style>
+</head>
+<body>
+  <div class="top-controls">
+    <span class="nav-hint-inline">
+      <kbd>←</kbd><kbd>→</kbd>이동 · <kbd>F</kbd>풀스크린 · <kbd>D</kbd>테마 · <kbd>1-9</kbd>점프
+    </span>
+    <button class="ctrl-btn" id="fs-btn">⛶ 풀스크린</button>
+    <button class="ctrl-btn" id="theme-btn">🌓 테마</button>
+  </div>
+
+  <div class="deck" id="deck">
+
+    <!-- ============ SLIDE 1 : Hero ============ -->
+    <section class="slide active">
+      <div class="hero">
+        <div class="hero-left">
+          <div class="slide-eyebrow">디버깅 기록 · 2026.05.23</div>
+          <h1>iPhone 51개 모델<br /><span class="gradient">RAG 챗봇</span><br />구현</h1>
+          <p><strong>iPhone 전 모델 51개의 스펙·가격·출시일·카메라 정보</strong>를 검색 기반(RAG)으로 응답하는 AI 상담 챗봇. 개발 과정에서 식별된 5가지 결함과 해결 방법.</p>
+          <div class="hero-meta">
+            <div><strong>주제</strong>iPhone 51개 모델 상담 AI 챗봇</div>
+            <div><strong>역할</strong>백엔드 및 AI 단독 담당</div>
+            <div><strong>범위</strong>5가지 결함 식별 및 해결</div>
+          </div>
+        </div>
+        <div class="hero-illust">
+          <svg viewBox="0 0 400 460">
+            <!-- background blobs -->
+            <circle cx="100" cy="120" r="80" fill="rgba(99,102,241,0.08)" class="pulse" />
+            <circle cx="320" cy="340" r="60" fill="rgba(236,72,153,0.08)" class="pulse" style="animation-delay: 1s" />
+
+            <!-- iPhone -->
+            <g class="float-1">
+              <rect x="130" y="100" width="140" height="260" rx="22" fill="white" stroke="#15171c" stroke-width="2.5" />
+              <rect x="138" y="115" width="124" height="220" rx="6" fill="#1f2733" />
+              <circle cx="200" cy="350" r="8" fill="none" stroke="#15171c" stroke-width="2" />
+              <!-- screen content: chat bubbles -->
+              <rect x="148" y="135" width="80" height="22" rx="11" fill="#6366f1" />
+              <text x="160" y="151" fill="white" font-size="10" font-family="sans-serif">iPhone 17?</text>
+              <rect x="160" y="170" width="92" height="22" rx="11" fill="white" />
+              <text x="170" y="186" fill="#15171c" font-size="10" font-family="sans-serif">알려드릴게요!</text>
+              <rect x="148" y="205" width="60" height="14" rx="7" fill="#393f4a" />
+              <rect x="148" y="225" width="86" height="14" rx="7" fill="#393f4a" />
+              <rect x="148" y="245" width="72" height="14" rx="7" fill="#393f4a" />
+            </g>
+
+            <!-- AI brain bubble -->
+            <g class="float-2" transform="translate(50, 280)">
+              <circle r="42" fill="white" stroke="#6366f1" stroke-width="2.5" />
+              <text y="6" font-size="36" text-anchor="middle">🤖</text>
+            </g>
+
+            <!-- spark stars -->
+            <text x="320" y="120" font-size="28" class="pulse">✨</text>
+            <text x="340" y="200" font-size="22" class="pulse" style="animation-delay: 0.6s">⚡</text>
+            <text x="70" y="60" font-size="24" class="pulse" style="animation-delay: 1.2s">💡</text>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SLIDE 2 : What I built ============ -->
+    <section class="slide">
+      <div class="demo-grid">
+        <div class="demo-left">
+          <div class="slide-eyebrow">02 · 결과물</div>
+          <h2>iPhone 모델 상담 챗봇</h2>
+          <p>iPhone 전 모델 <strong>51개</strong>의 스펙·가격·출시일·카메라 데이터를 학습. 한국어 자연어 질의에 대해 AI 가 정보 검색 후 응답.</p>
+          <div style="margin-top: 14px;">
+            <span class="chip">스펙 비교</span>
+            <span class="chip">출시일 조회</span>
+            <span class="chip">카메라 정보</span>
+            <span class="chip">가격 안내</span>
+            <span class="chip">모델 추천</span>
+          </div>
+          <p style="font-size: 13px; color: var(--fg-soft); margin-top: 28px;">우측 질문 버튼 클릭 시 동작 확인 →</p>
+        </div>
+
+        <div class="demo-chat">
+          <div class="demo-chat-header">
+            <div class="dot-icon">i</div>
+            <div>
+              <div class="title">iPhone 상담 AI</div>
+              <div style="font-size: 11px; color: var(--fg-soft)">Gemma 4 기반</div>
+            </div>
+            <div class="status">온라인</div>
+          </div>
+          <div class="demo-msgs" id="demo-msgs">
+            <div class="msg bot">안녕하세요! iPhone 에 대해 무엇이든 물어보세요 😊</div>
+          </div>
+          <div class="demo-quick">
+            <button class="quick-btn" data-q="iphone17">iPhone 17 Pro Max 카메라는?</button>
+            <button class="quick-btn" data-q="compare">15 vs 17 출시일 비교</button>
+            <button class="quick-btn" data-q="weight">iPhone Air 무게는?</button>
+            <button class="quick-btn" data-q="reset" style="background: var(--soft-bg); color: var(--fg-mute);">↺ 초기화</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SLIDE 3 : 5 problems overview ============ -->
+    <section class="slide">
+      <div class="slide-eyebrow">03 · 결함 영역</div>
+      <h2 class="slide-title">식별된 <span class="em">5가지 결함</span></h2>
+      <p class="slide-lede">동일 챗봇에서 발생한 다섯 가지 상이한 결함. 각각 독립적으로 해결. 카드 클릭 시 상세 슬라이드로 이동.</p>
+      <div class="prob-grid">
+        <div class="prob-card" style="--p-color: #f97316" data-go="3">
+          <div class="icon">👻</div>
+          <div class="num">결함 01</div>
+          <h4>비표시 문자 혼입</h4>
+          <p>사람 눈에는 동일하나 시스템에서는 다르게 인식되는 문자.</p>
+          <span class="tag">데이터 정제</span>
+          <span class="cta">자세히 →</span>
+        </div>
+        <div class="prob-card" style="--p-color: #8b5cf6" data-go="4">
+          <div class="icon">🎲</div>
+          <div class="num">결함 02</div>
+          <h4>비결정적 검색 결과</h4>
+          <p>동일 질의 반복 시 매회 상이한 검색 결과 반환.</p>
+          <span class="tag">AI 안정성</span>
+          <span class="cta">자세히 →</span>
+        </div>
+        <div class="prob-card" style="--p-color: #ef4444" data-go="5">
+          <div class="icon">🤷</div>
+          <div class="num">결함 03</div>
+          <h4>한국어 의도 오인식</h4>
+          <p>"17 프로 맥스" 질의를 "iPhone 15 Pro Max" 로 잘못 매핑.</p>
+          <span class="tag">언어 모델 약점</span>
+          <span class="cta">자세히 →</span>
+        </div>
+        <div class="prob-card" style="--p-color: #3b82f6" data-go="6">
+          <div class="icon">⚖️</div>
+          <div class="num">결함 04</div>
+          <h4>비교 질의 단일 응답</h4>
+          <p>비교 요청 시 한 모델 정보만 응답, 다른 모델은 정보 없음 처리.</p>
+          <span class="tag">검색 구조</span>
+          <span class="cta">자세히 →</span>
+        </div>
+        <div class="prob-card" style="--p-color: #10b981" data-go="7">
+          <div class="icon">🏗️</div>
+          <div class="num">결함 05</div>
+          <h4>챗봇 구조 재설계</h4>
+          <p>이전 4개 결함 분석 결과를 바탕으로 처리 흐름 재구조화.</p>
+          <span class="tag">아키텍처</span>
+          <span class="cta">자세히 →</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SLIDE 5 : NBSP — invisible character ============ -->
+    <section class="slide" style="--p-color: #f97316">
+      <div class="problem-slide">
+        <div class="problem-left">
+          <div class="problem-num">결함 01 · 데이터 정제</div>
+          <h2>👻 비표시 문자 혼입</h2>
+          <p class="summary">웹 크롤링 데이터에 <strong>사람 눈에 표시되지 않는 특수 공백 문자</strong>가 포함. 시스템 내부적으로는 "iPhone 17" 과 "iPhone□17" 이 서로 다른 문자열로 처리되어 검색 실패.</p>
+          <div class="problem-tech">
+            <h5>기술 상세</h5>
+            <ul>
+              <li><strong>원인 문자</strong>: 사람 눈에 보이지 않는 특수 공백 문자 (NBSP). Apple 페이지가 모델명이 줄바꿈으로 분리되지 않도록 의도적으로 삽입.</li>
+              <li><strong>침투 경로</strong>: 데이터 크롤링 시 NBSP 를 일반 공백으로 변환하지 않고 그대로 추출 → 파일명과 본문에 잔존.</li>
+              <li><strong>매칭 실패 지점</strong>: 벡터 DB 의 모델명 라벨이 NBSP 박힌 문자열로 저장됨 → 사용자가 입력한 일반 공백 질의와 글자 단위로 불일치.</li>
+              <li><strong>해결 적용</strong>: 유니코드 정규화 (NFKC) 를 크롤링 단계와 저장 단계 모두에 적용. NBSP·전각/반각·합자가 한 표준형으로 통일됨.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="interact">
+          <div class="interact-label">⚙ 인터렉티브 데모</div>
+          <h3>동일하게 보이는 두 문자열</h3>
+
+          <div class="nbsp-toggle">
+            <button class="active" id="nbsp-human">👁 사람 눈으로 보기</button>
+            <button id="nbsp-computer">🤖 시스템 내부 표현</button>
+          </div>
+
+          <div class="text-display" id="nbsp-display">
+            iPhone 17 Pro Max
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <div class="compare-row" id="nbsp-row-fail">
+              <span class="label">사용자 입력</span>
+              <span class="value">iPhone 17 Pro Max</span>
+              <span class="verdict">📝</span>
+            </div>
+            <div class="compare-row" id="nbsp-row-data">
+              <span class="label">저장된 데이터</span>
+              <span class="value" id="nbsp-data-val">iPhone 17 Pro Max</span>
+              <span class="verdict" id="nbsp-verdict">⏳</span>
+            </div>
+          </div>
+
+          <button class="nbsp-sim-btn" id="nbsp-search">🔍 검색 실행</button>
+          <div id="nbsp-result"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SLIDE 6 : Determinism ============ -->
+    <section class="slide" style="--p-color: #8b5cf6">
+      <div class="problem-slide">
+        <div class="problem-left">
+          <div class="problem-num">결함 02 · AI 안정성</div>
+          <h2>🎲 비결정적 검색 결과</h2>
+          <p class="summary">동일 질의 3회 반복 시 매회 <strong>상이한 결과</strong> 반환. 소형 AI 가 매 호출마다 검색 조건을 다르게 생성하는 것이 원인.</p>
+          <div class="problem-tech">
+            <h5>기술 상세</h5>
+            <ul>
+              <li><strong>기존 동작</strong>: 검색 도구가 사용자 질의를 AI 에 전달 → "검색 조건을 JSON 형식으로 만들어라" 라고 요청 → AI 가 자유 형식으로 출력한 텍스트를 JSON 으로 해석.</li>
+              <li><strong>실패 원인</strong>: 자유 형식 출력은 AI 의 일관성에 의존. 소형 AI (Gemma 4) 는 매 호출마다 다른 JSON 구조·필터 누락 등 비결정적 동작.</li>
+              <li><strong>해결 원리</strong>: 출력 가능한 값 자체를 제약. 51개 모델명을 선택지로 정의 (Pydantic Literal) → AI 가 51개 중 하나만 생성하도록 강제 (구조화 출력 강제).</li>
+              <li><strong>인스턴스 격리</strong>: 구조화 출력 전용 AI 와 답변 생성용 AI 를 별도 인스턴스로 분리. 구조화 제약의 잔향이 답변에 전파되지 않도록.</li>
+              <li><strong>검증</strong>: 동일 질의 3회 호출 → 3회 모두 동일 결과. 비결정성 100% 제거.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="interact">
+          <div class="interact-label">⚙ 인터렉티브 데모</div>
+          <h3>동일 질의 반복 실행 시뮬레이션</h3>
+
+          <div class="run-controls">
+            <button class="run-btn" id="det-run">🔁 동일 질의 3회 실행</button>
+            <div class="mode-toggle">
+              <button class="active" id="det-before">수정 전</button>
+              <button id="det-after">수정 후</button>
+            </div>
+          </div>
+
+          <div class="runs-list" id="det-runs">
+            <div class="run-row"><span class="run-label">1차</span><div class="run-dots"><div class="result-dot empty">?</div><div class="result-dot empty">?</div><div class="result-dot empty">?</div><div class="result-dot empty">?</div><div class="result-dot empty">?</div></div></div>
+            <div class="run-row"><span class="run-label">2차</span><div class="run-dots"><div class="result-dot empty">?</div><div class="result-dot empty">?</div><div class="result-dot empty">?</div><div class="result-dot empty">?</div><div class="result-dot empty">?</div></div></div>
+            <div class="run-row"><span class="run-label">3차</span><div class="run-dots"><div class="result-dot empty">?</div><div class="result-dot empty">?</div><div class="result-dot empty">?</div><div class="result-dot empty">?</div><div class="result-dot empty">?</div></div></div>
+          </div>
+
+          <div class="verdict-banner" id="det-verdict" style="visibility:hidden">대기 중</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SLIDE 7 : Gemma misunderstanding ============ -->
+    <section class="slide" style="--p-color: #ef4444">
+      <div class="problem-slide">
+        <div class="problem-left">
+          <div class="problem-num">결함 03 · 언어 모델 약점</div>
+          <h2>🤷 한국어 의도 오인식</h2>
+          <p class="summary">"17 프로 맥스" 질의에 대해 AI 가 <strong>"iPhone 15 Pro Max"</strong> 로 오인식. 학습 데이터의 "15 Pro Max" 빈도가 높아 해당 모델로 매핑된 현상.</p>
+          <div class="problem-tech">
+            <h5>기술 상세</h5>
+            <ul>
+              <li><strong>잔존 결함</strong>: 출력 공간을 51개로 제한해도 51개 안에서 잘못된 선택을 막지 못함.</li>
+              <li><strong>원인 1 — "해당 없음" 회피</strong>: 소형 AI 가 "해당 모델 없음" 선택을 회피. 51개 후보 중 하나를 강제로 고르는 경향.</li>
+              <li><strong>원인 2 — 숫자 인식 약점</strong>: AI 가 "17" 같은 숫자를 잘게 분해해서 인식. "Pro Max" 같이 학습 빈도 높은 단어로 매핑이 쏠림.</li>
+              <li><strong>Layer 1 — 시스템 메시지 강화</strong>: "모델 번호가 질의에 없으면 추측 금지", "도메인 외 질의는 모델 없음" 등 명시 규칙 추가. 시스템 메시지가 필드 설명보다 우선순위 높음.</li>
+              <li><strong>Layer 2 — 코드 후처리</strong>: AI 출력 모델명의 숫자가 질의에 실제로 등장하는지 정규식으로 검증. 부재 시 "해당 없음" 으로 강제. AI 출력과 무관한 코드 차원의 가드.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="interact">
+          <div class="interact-label">⚙ 인터렉티브 데모</div>
+          <h3>질문 클릭 시 AI 인식 결과 표시</h3>
+
+          <div class="mode-toggle" style="align-self:flex-start;">
+            <button class="active" id="g-before">검증 OFF (수정 전)</button>
+            <button id="g-after">검증 ON (수정 후)</button>
+          </div>
+
+          <div class="question-cards">
+            <div class="q-card" data-q="17">
+              <div class="q-text">"17 프로 맥스 카메라"</div>
+              <div class="q-meaning">기대 응답: iPhone 17 Pro Max</div>
+            </div>
+            <div class="q-card" data-q="cam">
+              <div class="q-text">"카메라 좋은 폰 추천"</div>
+              <div class="q-meaning">기대 응답: 모델 미지정 (None)</div>
+            </div>
+            <div class="q-card" data-q="mac">
+              <div class="q-text">"맥북 m4 어때?"</div>
+              <div class="q-meaning">기대 응답: 도메인 외 (None)</div>
+            </div>
+            <div class="q-card" data-q="hello">
+              <div class="q-text">"안녕하세요"</div>
+              <div class="q-meaning">기대 응답: 인사말 (None)</div>
+            </div>
+          </div>
+
+          <div class="answer-box empty" id="g-answer">
+            질문 클릭 시 AI 인식 결과 표시
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SLIDE 8 : Multi-model comparison ============ -->
+    <section class="slide" style="--p-color: #3b82f6">
+      <div class="problem-slide">
+        <div class="problem-left">
+          <div class="problem-num">결함 04 · 검색 구조</div>
+          <h2>⚖️ 비교 질의 단일 응답</h2>
+          <p class="summary">비교 요청 시 AI 가 <strong>한 모델 정보만</strong> 응답. 검색 도구가 단일 모델만 추출하도록 설계되어 비교 질의에서도 한 모델만 검색.</p>
+          <div class="problem-tech">
+            <h5>기술 상세</h5>
+            <ul>
+              <li><strong>결함 1 — 검색 도구의 단일 추출 구조</strong>: 추출 가능한 모델을 "한 개 또는 없음" 으로 정의 → 비교 질의가 들어와도 한 모델만 선택하도록 강제됨.</li>
+              <li><strong>결함 2 — 라벨 전달 누락</strong>: 답변 생성 단계의 기본 설정이 검색된 문서의 본문만 사용 → 어느 본문이 어느 모델 것인지 라벨이 답변 AI 에 전달되지 않음.</li>
+              <li><strong>해결 1 — 다중 추출 허용</strong>: 추출 모델을 "여러 개 목록" 으로 변경. AI 가 0~N개 모델 추출 가능.</li>
+              <li><strong>해결 2 — 모델별 분리 검색</strong>: 한 번에 전체 검색 (필터 사용) 대신 모델별로 따로 검색 후 합치기. 단일 질의가 한 모델로 편향되는 것 방지, 균등 분배 보장.</li>
+              <li><strong>해결 3 — 라벨 명시</strong>: 답변 AI 가 보는 문서 앞에 모델명 라벨을 붙임 (예: "[iPhone 17 Pro Max] 카메라..."). 본문과 모델의 매핑이 명확해짐.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="interact">
+          <div class="interact-label">⚙ 인터렉티브 데모</div>
+          <h3>동일 질의, 응답 비교</h3>
+
+          <div class="compare-toggle">
+            <button class="active" id="cmp-before">수정 전 응답</button>
+            <button id="cmp-after">수정 후 응답</button>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:12px; flex:1;">
+            <div class="chat-bubble user">iPhone 17 Pro Max 와 iPhone 16 Pro 카메라 차이 알려줘</div>
+            <div id="cmp-answer" style="display:flex; flex-direction:column; gap:8px;"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SLIDE 9 : LangGraph SVG diagram ============ -->
+    <section class="slide" style="--p-color: #10b981">
+      <div class="problem-slide" style="grid-template-columns: 1fr 1.5fr">
+        <div class="problem-left">
+          <div class="problem-num">결함 05 · 아키텍처</div>
+          <h2>🏗️ 챗봇 구조 재설계</h2>
+          <p class="summary">이전 4개 결함 분석 결과 — 모든 처리가 <strong>단일 함수에 결합된 것</strong>이 근본 원인. 8개 단계로 분리하여 각 단계 독립 점검 가능 구조로 재설계.</p>
+          <div class="problem-tech">
+            <h5>기술 상세</h5>
+            <ul>
+              <li><strong>Before</strong>: 분기 도구 + 단일 함수에 5단계 결합 (이전 대화 통합·모델 추출·검색·정렬·로깅). 추적 수단은 콘솔 출력만.</li>
+              <li><strong>After</strong>: 그래프 기반 8 노드 — 분기 · 맥락 통합 · 모델 추출 · 검색 · 정렬 · 응답 생성 · 검증 · 일반 대화.</li>
+              <li><strong>상태 전달</strong>: 상태 객체가 노드 간 입출력으로 흐름. 모든 단계 가시화 (질의·분기 결과·재구성된 질의·모델 목록·검색 결과·응답·이슈).</li>
+              <li><strong>스트리밍</strong>: 그래프가 AI 응답을 한 글자씩 흘려 보냄. 노드 식별자로 필터링하여 사용자에게 노출되는 노드의 출력만 전송 (SSE).</li>
+              <li><strong>온도 분리</strong>: 맥락 통합용 AI (0.0) / 응답 생성용 AI (0.0) / 일반 대화용 (0.2) 를 별도 인스턴스로 사용. 단일 흐름 구조에선 불가능했던 단계별 제어.</li>
+              <li><strong>확장 패턴</strong>: 검증 실패 시 응답 생성 재시도 (조건부 분기), 상태 영속화 (체크포인터), 모호 질의 명확화 노드 등이 노드 추가로 자연스럽게 도입 가능.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="arch-stage">
+          <div class="arch-controls">
+            <div class="before-after-toggle">
+              <button id="arch-before">Before · 단일 함수</button>
+              <button class="active" id="arch-after">After · 8노드 분리</button>
+            </div>
+            <button class="play-btn" id="arch-play">▶ 처리 흐름 시각화</button>
+          </div>
+
+          <div class="arch-svg-wrap">
+            <!-- Before view -->
+            <svg class="arch-svg" id="arch-svg-before" viewBox="0 0 700 360" preserveAspectRatio="xMidYMid meet" style="display:none">
+              <defs>
+                <marker id="ah-before" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                  <path d="M0,0 L10,5 L0,10 z" fill="var(--fg-soft)" />
+                </marker>
+              </defs>
+              <!-- User input -->
+              <rect x="290" y="20" width="120" height="40" rx="20" fill="var(--soft-bg)" stroke="var(--border)" stroke-width="1.5" />
+              <text x="350" y="45" font-size="13" fill="var(--fg)" text-anchor="middle">사용자 질문</text>
+              <path d="M350,60 L350,90" class="edge" marker-end="url(#ah-before)" />
+
+              <!-- One big box -->
+              <rect x="100" y="100" width="500" height="200" rx="14" fill="rgba(239,68,68,0.05)" stroke="var(--danger)" stroke-width="2" stroke-dasharray="6 4" />
+              <text x="350" y="130" font-size="14" font-weight="700" fill="var(--danger)" text-anchor="middle">모든 처리가 단일 함수에 결합</text>
+
+              <text x="350" y="160" font-size="12" fill="var(--fg-mute)" text-anchor="middle">① 이전 대화 통합  →  ② 검색 조건 생성</text>
+              <text x="350" y="180" font-size="12" fill="var(--fg-mute)" text-anchor="middle">③ 데이터 검색  →  ④ 결과 정렬  →  ⑤ AI 응답 생성</text>
+
+              <rect x="170" y="210" width="360" height="60" rx="10" fill="white" stroke="var(--border)" />
+              <text x="350" y="235" font-size="12" fill="var(--fg)" text-anchor="middle">장애 단계 추적 곤란</text>
+              <text x="350" y="255" font-size="11" fill="var(--fg-soft)" text-anchor="middle">→ 장애 발생 시 5개 단계 전체 검토 필요</text>
+
+              <path d="M350,300 L350,330" class="edge" marker-end="url(#ah-before)" />
+              <rect x="290" y="320" width="120" height="30" rx="15" fill="var(--soft-bg)" stroke="var(--border)" />
+              <text x="350" y="340" font-size="12" fill="var(--fg)" text-anchor="middle">답변</text>
+            </svg>
+
+            <!-- After view — 3 컬럼 (좌: RAG 전처리 / 중앙: 검색·응답 / 우: 일반대화·END) -->
+            <svg class="arch-svg" id="arch-svg-after" viewBox="0 0 800 640" preserveAspectRatio="xMidYMid meet">
+              <defs>
+                <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                  <path d="M0,0 L10,5 L0,10 z" fill="var(--fg-soft)" />
+                </marker>
+              </defs>
+
+              <!-- Start (중앙 상단) -->
+              <g class="svg-node" data-node="start">
+                <rect class="node-rect" x="310" y="10" width="180" height="50" rx="25" fill="var(--soft-bg)" />
+                <text class="node-text" x="400" y="36">사용자 질문</text>
+              </g>
+
+              <path class="edge" id="e-start-router" d="M400,60 L400,90" marker-end="url(#ah)" />
+
+              <!-- Router (중앙) -->
+              <g class="svg-node" data-node="router">
+                <rect class="node-rect" x="310" y="90" width="180" height="64" rx="12" />
+                <text class="node-text" x="400" y="115">🔀 분기</text>
+                <text class="node-sub" x="400" y="138">iPhone 질문? 일반 대화?</text>
+              </g>
+
+              <!-- 분기 라벨 -->
+              <text x="170" y="180" font-size="12" fill="var(--fg-mute)" font-weight="500">iPhone 질문</text>
+              <text x="600" y="180" font-size="12" fill="var(--fg-mute)" font-weight="500">일반 대화</text>
+
+              <!-- branches: router → ctx (좌), router → general (우) -->
+              <path class="edge" id="e-router-ctx" d="M345,154 L160,200" marker-end="url(#ah)" />
+              <path class="edge" id="e-router-gen" d="M455,154 L640,200" marker-end="url(#ah)" />
+
+              <!-- Contextualize (좌측 컬럼, 1단) -->
+              <g class="svg-node" data-node="contextualize">
+                <rect class="node-rect" x="40" y="200" width="180" height="64" rx="12" />
+                <text class="node-text" x="130" y="225">📝 맥락 통합</text>
+                <text class="node-sub" x="130" y="248">이전 대화 반영</text>
+              </g>
+
+              <!-- General (우측 컬럼, 단독) -->
+              <g class="svg-node" data-node="general">
+                <rect class="node-rect" x="580" y="200" width="180" height="64" rx="12" />
+                <text class="node-text" x="670" y="225">💬 일반 대화</text>
+                <text class="node-sub" x="670" y="248">검색 우회</text>
+              </g>
+
+              <!-- ctx → extract -->
+              <path class="edge" id="e-ctx-ext" d="M130,264 L130,294" marker-end="url(#ah)" />
+              <g class="svg-node" data-node="extract">
+                <rect class="node-rect" x="40" y="294" width="180" height="64" rx="12" />
+                <text class="node-text" x="130" y="319">🔍 모델 추출</text>
+                <text class="node-sub" x="130" y="342">"17 Pro Max" 인식</text>
+              </g>
+
+              <!-- extract → retrieve -->
+              <path class="edge" id="e-ext-ret" d="M130,358 L130,388" marker-end="url(#ah)" />
+              <g class="svg-node" data-node="retrieve">
+                <rect class="node-rect" x="40" y="388" width="180" height="64" rx="12" />
+                <text class="node-text" x="130" y="413">📚 데이터 검색</text>
+                <text class="node-sub" x="130" y="436">모델별 검색</text>
+              </g>
+
+              <!-- retrieve → rerank (좌→중앙 수평) -->
+              <path class="edge" id="e-ret-rer" d="M220,420 L310,420" marker-end="url(#ah)" />
+              <g class="svg-node" data-node="rerank">
+                <rect class="node-rect" x="310" y="388" width="180" height="64" rx="12" />
+                <text class="node-text" x="400" y="413">📊 정렬</text>
+                <text class="node-sub" x="400" y="436">최신순</text>
+              </g>
+
+              <!-- rerank → compose -->
+              <path class="edge" id="e-rer-comp" d="M400,452 L400,482" marker-end="url(#ah)" />
+              <g class="svg-node" data-node="compose">
+                <rect class="node-rect" x="310" y="482" width="180" height="64" rx="12" />
+                <text class="node-text" x="400" y="507">✍️ 응답 생성</text>
+                <text class="node-sub" x="400" y="530">AI 한국어 출력</text>
+              </g>
+
+              <!-- compose → verify -->
+              <path class="edge" id="e-comp-ver" d="M400,546 L400,576" marker-end="url(#ah)" />
+              <g class="svg-node" data-node="verify">
+                <rect class="node-rect" x="310" y="576" width="180" height="64" rx="12" />
+                <text class="node-text" x="400" y="601">✅ 검증</text>
+                <text class="node-sub" x="400" y="624">회피·누락 체크</text>
+              </g>
+
+              <!-- verify → END (중앙 → 우측 수평) -->
+              <path class="edge" id="e-ver-end" d="M490,608 L580,608" marker-end="url(#ah)" />
+
+              <!-- general → END (우측 컬럼 따라 내려옴) -->
+              <path class="edge" id="e-gen-end" d="M670,264 L670,576" marker-end="url(#ah)" />
+
+              <!-- END pill (우하단, 다른 노드와 겹치지 않음) -->
+              <g class="svg-node end-node" data-node="end">
+                <rect class="node-rect" x="580" y="576" width="180" height="64" rx="32" />
+                <text class="node-text" x="670" y="612">END</text>
+              </g>
+            </svg>
+
+            <div class="node-info" id="node-info" style="display:none"></div>
+          </div>
+
+          <div class="arch-text-area">
+            <div id="arch-caption-before" style="display:none">
+              <strong style="color: var(--danger)">단일 함수 구조의 문제:</strong> 5개 단계 ①~⑤ 가 한 함수에 결합되어 장애 단계 추적 곤란. AI 응답 회피 감지 불가.
+            </div>
+            <div id="arch-caption-after">
+              <strong style="color: var(--success)">분리 구조의 이점:</strong> 각 노드 독립 점검 가능. 노드 클릭 시 단계별 역할 확인. "처리 흐름 시각화" 로 처리 순서 추적 가능.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SLIDE 10 : Lessons + roadmap ============ -->
+    <section class="slide">
+      <div style="margin-bottom: 28px;">
+        <div class="slide-eyebrow">09 · 결과 · 결론</div>
+        <h2 class="slide-title">구현 성과와 도출한 결론</h2>
+      </div>
+      <div class="lessons-grid">
+        <div class="lessons-list">
+          <div class="lesson-item">
+            <div class="lesson-num">01</div>
+            <div>
+              <h4>외부 데이터는 진입 시점에서 정규화</h4>
+              <p>웹 크롤링 데이터에는 비표시 문자가 혼입 가능. 진입 boundary 에서 정규화 적용 시 이후 모든 검색 안정성 확보.</p>
+            </div>
+          </div>
+          <div class="lesson-item">
+            <div class="lesson-num">02</div>
+            <div>
+              <h4>AI 출력 제어는 권유보다 강제가 효과적</h4>
+              <p>prompt 지시만으로는 빈번하게 무시. 출력 형식을 코드 레벨에서 제약하고 결과 후처리 검증으로 결정적 가드 확보.</p>
+            </div>
+          </div>
+          <div class="lesson-item">
+            <div class="lesson-num">03</div>
+            <div>
+              <h4>검색 도구의 cardinality 가 응답 품질의 상한</h4>
+              <p>비교 질의 응답을 위해 검색 도구의 다중 결과 추출 지원 필요. 도구 구조 결함 시 AI 성능과 무관하게 응답 생성 불가.</p>
+            </div>
+          </div>
+          <div class="lesson-item">
+            <div class="lesson-num">04</div>
+            <div>
+              <h4>다중 처리를 단일 함수에 통합 회피</h4>
+              <p>다단계를 단일 함수에 통합 시 장애 단계 추적 곤란. 명시적 단계 분리로 디버깅·확장·테스트 용이성 확보.</p>
+            </div>
+          </div>
+        </div>
+        <div class="roadmap-col">
+          <h3>구현 성과</h3>
+          <div class="roadmap-card">
+            <span class="roadmap-when">완료</span>
+            <h4>iPhone 51개 모델 RAG 챗봇</h4>
+            <p>iPhone 전 모델 스펙·가격·출시일·카메라 데이터 검색 기반 응답.</p>
+          </div>
+          <div class="roadmap-card">
+            <span class="roadmap-when">완료</span>
+            <h4>5가지 결함 식별 및 해결</h4>
+            <p>데이터 정제·검색 안정성·의도 인식·비교 응답·아키텍처 재설계 모두 처리.</p>
+          </div>
+          <div class="roadmap-card">
+            <span class="roadmap-when">다음</span>
+            <h4>회피 응답 자동 재시도 · 대화 영속화 · 모호 질의 명확화</h4>
+            <p>검증 단계 활용한 retry 루프, 멀티턴 영속화, 명확화 질문 노드.</p>
+          </div>
+          <div class="closing-line">
+            <strong>핵심 메시지:</strong> RAG 챗봇 구현 시 모델 성능 외에<br/>
+            <strong>데이터·검색 구조·아키텍처 5개 결함 영역</strong>에 대한 사전 인지 필요.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========= Dock (deck 내부, dots + counter 만 — 좌측 정렬) ========= -->
+    <div class="dock">
+      <button class="nav-btn" id="prev-btn">‹</button>
+      <button class="nav-btn" id="next-btn">›</button>
+      <div class="dots" id="dots"></div>
+      <div class="counter" id="counter">01 / 09</div>
+    </div>
+
+  </div>
+
+  <script>
+    // ========== 16:9 fit ==========
+    function fitDeck() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const scale = Math.min(w / 1280, h / 720);
+      document.getElementById('deck').style.transform =
+        `translate(-50%, -50%) scale(${scale})`;
+    }
+    window.addEventListener('resize', fitDeck);
+    fitDeck();
+
+    // ========== Deck navigation ==========
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    const dotsEl = document.getElementById('dots');
+    const counterEl = document.getElementById('counter');
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    let current = 0;
+    const total = slides.length;
+
+    slides.forEach((_, i) => {
+      const d = document.createElement('div');
+      d.className = 'dot' + (i === 0 ? ' active' : '');
+      d.addEventListener('click', () => go(i));
+      dotsEl.appendChild(d);
+    });
+    const dots = Array.from(dotsEl.children);
+
+    function go(i) {
+      if (i < 0 || i >= total || i === current) return;
+      slides[current].classList.remove('active');
+      dots[current].classList.remove('active');
+      current = i;
+      slides[current].classList.add('active');
+      dots[current].classList.add('active');
+      counterEl.textContent = String(current+1).padStart(2,'0') + ' / ' + String(total).padStart(2,'0');
+      prevBtn.disabled = current === 0;
+      nextBtn.disabled = current === total - 1;
+      history.replaceState(null, '', '#' + (current + 1));
+    }
+    prevBtn.addEventListener('click', () => go(current - 1));
+    nextBtn.addEventListener('click', () => go(current + 1));
+    prevBtn.disabled = true;
+
+    document.addEventListener('keydown', e => {
+      if (['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
+      switch (e.key) {
+        case 'ArrowRight': case 'PageDown': case ' ':
+          go(current + 1); e.preventDefault(); break;
+        case 'ArrowLeft': case 'PageUp':
+          go(current - 1); e.preventDefault(); break;
+        case 'Home': go(0); break;
+        case 'End': go(total - 1); break;
+        case 'f': case 'F':
+          if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+          else document.exitFullscreen();
+          break;
+        case 'd': case 'D':
+          toggleTheme(); break;
+        default:
+          if (/^[1-9]$/.test(e.key)) go(parseInt(e.key) - 1);
+      }
+    });
+
+    function toggleTheme() {
+      document.documentElement.classList.toggle('dark');
+      localStorage.setItem('deck-theme',
+        document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+    }
+    if (localStorage.getItem('deck-theme') === 'dark') document.documentElement.classList.add('dark');
+    document.getElementById('theme-btn').addEventListener('click', toggleTheme);
+    document.getElementById('fs-btn').addEventListener('click', () => {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+      else document.exitFullscreen();
+    });
+
+    // ========== Card jumps (slide 4) ==========
+    document.querySelectorAll('[data-go]').forEach(card => {
+      card.addEventListener('click', () => go(parseInt(card.dataset.go)));
+    });
+
+    // ========== Slide 2 — chatbot demo ==========
+    const ANSWERS = {
+      'iphone17': {
+        user: 'iPhone 17 Pro Max 카메라는?',
+        bot: 'iPhone 17 Pro Max 의 카메라는 48MP Fusion 메인 + 48MP 초광각 + 48MP 망원 (8배 광학) 조합이에요. 망원 줌이 16 Pro 대비 강화된 게 특징입니다.'
+      },
+      'compare': {
+        user: 'iPhone 15 와 17 출시일 비교',
+        bot: 'iPhone 15 는 2023년 9월 22일, iPhone 17 은 2025년 9월 19일에 출시됐어요. 약 1년 11개월 차이입니다.'
+      },
+      'weight': {
+        user: 'iPhone Air 무게는?',
+        bot: 'iPhone Air 의 무게는 165g 입니다.'
+      },
+      'reset': null
+    };
+    const demoMsgs = document.getElementById('demo-msgs');
+    document.querySelectorAll('.quick-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const key = btn.dataset.q;
+        if (key === 'reset') {
+          demoMsgs.innerHTML = '<div class="msg bot">안녕하세요! iPhone 에 대해 무엇이든 물어보세요 😊</div>';
+          document.querySelectorAll('.quick-btn').forEach(b => b.disabled = false);
+          return;
+        }
+        if (btn.disabled) return;
+        btn.disabled = true;
+        const a = ANSWERS[key];
+        addMsg('user', a.user);
+        const typing = document.createElement('div');
+        typing.className = 'typing';
+        typing.innerHTML = '<span></span><span></span><span></span>';
+        demoMsgs.appendChild(typing);
+        demoMsgs.scrollTop = demoMsgs.scrollHeight;
+        await sleep(900);
+        typing.remove();
+        addMsg('bot', a.bot);
+      });
+    });
+    function addMsg(role, text) {
+      const d = document.createElement('div');
+      d.className = 'msg ' + role;
+      d.textContent = text;
+      demoMsgs.appendChild(d);
+      demoMsgs.scrollTop = demoMsgs.scrollHeight;
+    }
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    // ========== Slide 5 — NBSP ==========
+    const nbspHumanBtn = document.getElementById('nbsp-human');
+    const nbspComputerBtn = document.getElementById('nbsp-computer');
+    const nbspDisplay = document.getElementById('nbsp-display');
+    const nbspDataVal = document.getElementById('nbsp-data-val');
+    const nbspSearchBtn = document.getElementById('nbsp-search');
+    const nbspResult = document.getElementById('nbsp-result');
+    const nbspVerdict = document.getElementById('nbsp-verdict');
+    const nbspRowData = document.getElementById('nbsp-row-data');
+    let nbspMode = 'human';
+    let nbspFixed = false;
+
+    function renderNbsp() {
+      if (nbspMode === 'human') {
+        nbspDisplay.textContent = 'iPhone 17 Pro Max';
+        nbspDataVal.textContent = 'iPhone 17 Pro Max';
+      } else {
+        // computer view
+        if (nbspFixed) {
+          nbspDisplay.innerHTML = 'iPhone<span class="normal-space">·</span>17<span class="normal-space">·</span>Pro<span class="normal-space">·</span>Max';
+          nbspDataVal.innerHTML = 'iPhone<span class="normal-space">·</span>17<span class="normal-space">·</span>Pro<span class="normal-space">·</span>Max';
+        } else {
+          nbspDisplay.innerHTML = 'iPhone<span class="nbsp-marker">NBSP</span>17<span class="nbsp-marker">NBSP</span>Pro<span class="nbsp-marker">NBSP</span>Max';
+          nbspDataVal.innerHTML = 'iPhone<span class="nbsp-marker">NBSP</span>17<span class="nbsp-marker">NBSP</span>Pro<span class="nbsp-marker">NBSP</span>Max';
+        }
+      }
+    }
+    nbspHumanBtn.addEventListener('click', () => {
+      nbspHumanBtn.classList.add('active');
+      nbspComputerBtn.classList.remove('active');
+      nbspMode = 'human';
+      renderNbsp();
+    });
+    nbspComputerBtn.addEventListener('click', () => {
+      nbspComputerBtn.classList.add('active');
+      nbspHumanBtn.classList.remove('active');
+      nbspMode = 'computer';
+      renderNbsp();
+    });
+    nbspSearchBtn.addEventListener('click', () => {
+      if (!nbspFixed) {
+        // fail
+        nbspRowData.classList.remove('match');
+        nbspRowData.classList.add('fail');
+        nbspVerdict.textContent = '❌';
+        nbspResult.innerHTML = '<div class="sim-result fail">검색 실패 — 사용자 입력과 저장 데이터가 시스템에서 상이하게 인식. 51개 모델 중 0개 매칭.</div>';
+        nbspSearchBtn.textContent = '🛠 NFKC 정규화 적용';
+        nbspFixed = true;
+      } else {
+        nbspRowData.classList.remove('fail');
+        nbspRowData.classList.add('match');
+        nbspVerdict.textContent = '✅';
+        nbspResult.innerHTML = '<div class="sim-result ok">검색 성공 — 양측 NFKC 정규화 후 동일 문자열. 51개 모델 정확 매칭.</div>';
+        nbspSearchBtn.textContent = '해결 완료';
+        nbspSearchBtn.classList.add('success');
+        nbspSearchBtn.disabled = true;
+      }
+      renderNbsp();
+    });
+
+    // ========== Slide 6 — Determinism ==========
+    const detRunBtn = document.getElementById('det-run');
+    const detBefore = document.getElementById('det-before');
+    const detAfter = document.getElementById('det-after');
+    const detRuns = document.getElementById('det-runs');
+    const detVerdict = document.getElementById('det-verdict');
+    let detMode = 'before';
+
+    const TARGET_MODEL = 'iPhone 17 Pro Max';
+    const OTHER_MODELS = ['iPhone 15', 'iPhone 16 Pro', 'iPhone 15 Plus', 'iPhone 16', 'iPhone Air', 'iPhone 15 Pro', 'iPhone 16 Plus'];
+
+    function shortLabel(name) {
+      return name.replace('iPhone ', '');
+    }
+
+    detBefore.addEventListener('click', () => {
+      detBefore.classList.add('active'); detAfter.classList.remove('active');
+      detMode = 'before';
+      resetDet();
+    });
+    detAfter.addEventListener('click', () => {
+      detAfter.classList.add('active'); detBefore.classList.remove('active');
+      detMode = 'after';
+      resetDet();
+    });
+    function resetDet() {
+      detRuns.querySelectorAll('.run-row').forEach(row => {
+        row.querySelector('.run-dots').innerHTML =
+          '<div class="result-dot empty">?</div>'.repeat(5);
+      });
+      detVerdict.style.visibility = 'hidden';
+    }
+    detRunBtn.addEventListener('click', async () => {
+      detRunBtn.disabled = true;
+      detVerdict.style.visibility = 'hidden';
+      const rows = detRuns.querySelectorAll('.run-row');
+      for (let r = 0; r < 3; r++) {
+        const dots = rows[r].querySelector('.run-dots');
+        dots.innerHTML = '';
+        for (let i = 0; i < 5; i++) {
+          await sleep(110);
+          const dot = document.createElement('div');
+          if (detMode === 'after') {
+            // deterministic: always 5x target
+            dot.className = 'result-dot match';
+            dot.textContent = shortLabel(TARGET_MODEL);
+          } else {
+            // non-deterministic: random distribution
+            const r2 = Math.random();
+            if (r === 0) {
+              // 1차: target 1 + others 4
+              if (i === 0) { dot.className = 'result-dot match'; dot.textContent = shortLabel(TARGET_MODEL); }
+              else { dot.className = 'result-dot wrong'; dot.textContent = shortLabel(OTHER_MODELS[i % OTHER_MODELS.length]); }
+            } else if (r === 1) {
+              // 2차: all wrong
+              dot.className = 'result-dot wrong';
+              dot.textContent = shortLabel(OTHER_MODELS[(i + 2) % OTHER_MODELS.length]);
+            } else {
+              // 3차: all target
+              dot.className = 'result-dot match';
+              dot.textContent = shortLabel(TARGET_MODEL);
+            }
+          }
+          dots.appendChild(dot);
+        }
+      }
+      detVerdict.style.visibility = 'visible';
+      if (detMode === 'before') {
+        detVerdict.className = 'verdict-banner fail';
+        detVerdict.textContent = '비결정적 — 1차/2차/3차 결과 모두 상이. 검색 신뢰도 미확보.';
+      } else {
+        detVerdict.className = 'verdict-banner ok';
+        detVerdict.textContent = '결정적 — 3회 모두 동일. Pydantic Literal + 구조화 출력 강제 적용.';
+      }
+      detRunBtn.disabled = false;
+    });
+
+    // ========== Slide 7 — Gemma misunderstanding ==========
+    const gBefore = document.getElementById('g-before');
+    const gAfter = document.getElementById('g-after');
+    const gAnswer = document.getElementById('g-answer');
+    let gMode = 'before';
+
+    const GEMMA_ANSWERS = {
+      '17': {
+        before: { type: 'wrong', label: 'iPhone 15 Pro Max', why: 'AI 가 "17" 을 무시하고 학습 빈도가 높은 15 Pro Max 로 매핑' },
+        after: { type: 'right', label: 'iPhone 17 Pro Max', why: '정규식이 질의 내 "17" 존재 여부 검증 후 오답 차단' }
+      },
+      'cam': {
+        before: { type: 'wrong', label: 'iPhone 15 Pro Max', why: '모델 미지정 질의에 대해 AI 가 강제 매핑 발생' },
+        after: { type: 'right', label: '모델 미지정 (None)', why: '질의에 숫자 부재 시 모델명 내 숫자 매핑 무효화 → None' }
+      },
+      'mac': {
+        before: { type: 'wrong', label: 'iPhone 15 Pro', why: '도메인 외 질의에 대해 강제 iPhone 매핑' },
+        after: { type: 'right', label: '도메인 외 (None)', why: '"맥북" / "m4" 가 iPhone 모델명과 비매칭 → None' }
+      },
+      'hello': {
+        before: { type: 'wrong', label: 'iPhone', why: '인사말에 대해 enum 내 최근접 항목 매핑' },
+        after: { type: 'right', label: '인사말 (None)', why: '숫자 부재 → 모델 매칭 의도 없음 → None' }
+      }
+    };
+    gBefore.addEventListener('click', () => {
+      gBefore.classList.add('active'); gAfter.classList.remove('active');
+      gMode = 'before'; renderGAnswer(null);
+    });
+    gAfter.addEventListener('click', () => {
+      gAfter.classList.add('active'); gBefore.classList.remove('active');
+      gMode = 'after'; renderGAnswer(null);
+    });
+    function renderGAnswer(q) {
+      document.querySelectorAll('.q-card').forEach(c => c.classList.remove('selected'));
+      if (!q) {
+        gAnswer.className = 'answer-box empty';
+        gAnswer.innerHTML = '질문 클릭 시 AI 인식 결과 표시';
+        return;
+      }
+      document.querySelector(`.q-card[data-q="${q}"]`).classList.add('selected');
+      const a = GEMMA_ANSWERS[q][gMode];
+      gAnswer.className = 'answer-box ' + (a.type === 'wrong' ? 'wrong' : 'right');
+      gAnswer.innerHTML = `<span class="ai-emoji">${a.type === 'wrong' ? '⚠️' : '✓'}</span><div><div>AI 인식 모델: <strong>${a.label}</strong></div><div style="font-size:12.5px; color:var(--fg-mute); margin-top:4px;">${a.why}</div></div>`;
+    }
+    document.querySelectorAll('.q-card').forEach(card => {
+      card.addEventListener('click', () => renderGAnswer(card.dataset.q));
+    });
+
+    // ========== Slide 8 — Comparison ==========
+    const cmpBefore = document.getElementById('cmp-before');
+    const cmpAfter = document.getElementById('cmp-after');
+    const cmpAnswer = document.getElementById('cmp-answer');
+
+    function renderCmpAnswer(mode) {
+      cmpAnswer.innerHTML = '';
+      if (mode === 'before') {
+        const bubble = document.createElement('div');
+        bubble.className = 'chat-bubble bot bad';
+        bubble.innerHTML = `<strong>iPhone 17 Pro Max</strong> 의 카메라는 48MP Fusion 메인 + 망원 8× 입니다.<br/><br/><strong style="color:var(--danger)">iPhone 16 Pro 에 대한 정보는 제공되지 않았습니다.</strong> 비교 응답 생성 불가.`;
+        cmpAnswer.appendChild(bubble);
+      } else {
+        const bubble = document.createElement('div');
+        bubble.className = 'chat-bubble bot good';
+        bubble.innerHTML = `
+          <strong>iPhone 17 Pro Max</strong>
+          <ul>
+            <li>메인: 48MP Fusion ƒ/1.78</li>
+            <li>망원: 48MP, 8배 광학 줌</li>
+          </ul>
+          <strong>iPhone 16 Pro</strong>
+          <ul>
+            <li>메인: 48MP Fusion ƒ/1.78</li>
+            <li>망원: 12MP, 5배 광학 줌</li>
+          </ul>
+          <div style="margin-top:8px; padding-top:8px; border-top: 1px dashed var(--border);">
+            <strong>핵심 차이:</strong> 17 Pro Max 가 망원 화소·줌배율 모두 우위 (4×/8× vs 5×).
+          </div>`;
+        cmpAnswer.appendChild(bubble);
+      }
+    }
+    cmpBefore.addEventListener('click', () => {
+      cmpBefore.classList.add('active'); cmpAfter.classList.remove('active');
+      renderCmpAnswer('before');
+    });
+    cmpAfter.addEventListener('click', () => {
+      cmpAfter.classList.add('active'); cmpBefore.classList.remove('active');
+      renderCmpAnswer('after');
+    });
+    renderCmpAnswer('before');
+
+    // ========== Slide 9 — LangGraph SVG ==========
+    const archBefore = document.getElementById('arch-before');
+    const archAfter = document.getElementById('arch-after');
+    const svgBefore = document.getElementById('arch-svg-before');
+    const svgAfter = document.getElementById('arch-svg-after');
+    const captionBefore = document.getElementById('arch-caption-before');
+    const captionAfter = document.getElementById('arch-caption-after');
+    const archPlayBtn = document.getElementById('arch-play');
+    const nodeInfoEl = document.getElementById('node-info');
+
+    archBefore.addEventListener('click', () => {
+      archBefore.classList.add('active'); archAfter.classList.remove('active');
+      svgBefore.style.display = 'block'; svgAfter.style.display = 'none';
+      captionBefore.style.display = 'block'; captionAfter.style.display = 'none';
+      archPlayBtn.style.display = 'none';
+      nodeInfoEl.style.display = 'none';
+    });
+    archAfter.addEventListener('click', () => {
+      archAfter.classList.add('active'); archBefore.classList.remove('active');
+      svgAfter.style.display = 'block'; svgBefore.style.display = 'none';
+      captionAfter.style.display = 'block'; captionBefore.style.display = 'none';
+      archPlayBtn.style.display = '';
+    });
+
+    const NODE_INFO = {
+      'start': { layman: '사용자 질문 입력 시점.', tech: 'ChatState 초기화: { input, chat_history }' },
+      'router': { layman: 'iPhone 질의 / 일반 대화 분기 판단.', tech: 'router_node → conditional_edge (iphone vs general)' },
+      'contextualize': { layman: '이전 대화 참조하여 대명사 해소. 예: "그거 무게는?" → "iPhone 17 Pro Max 무게는?" 으로 변환.', tech: 'history_aware contextualize_chain · temperature=0.0' },
+      'extract': { layman: '질의에서 모델명 추출 (예: "17 Pro Max"). Pydantic 으로 출력 구조 강제.', tech: 'Pydantic Literal + _validate_models_in_query 정규식 후처리' },
+      'retrieve': { layman: 'ChromaDB 에서 해당 모델 데이터 조회. 비교 질의 시 모델별 분리 검색 후 병합.', tech: 'IPhoneQueryRetriever · 모델별 분리 retrieval + merge (옵션 B)' },
+      'rerank': { layman: '검색 데이터를 출시일 최신순 정렬.', tech: 'docs.sort(key=released_date, reverse=True)' },
+      'compose': { layman: 'AI 한국어 응답 생성. 사용자에게 노출되는 출력.', tech: 'create_stuff_documents_chain + doc_prompt = "[{model_name}] {page_content}"' },
+      'verify': { layman: '응답 내 회피 표현·모델 누락 코드 점검.', tech: 'verify_node — issue 검출 시 log (향후: conditional edge → compose 재시도)' },
+      'general': { layman: 'iPhone 외 일반 대화는 RAG 우회, AI 직접 응답.', tech: 'general_chat_node (RAG bypass)' },
+      'end': { layman: '응답 사용자 전달.', tech: 'SSE stream end · session save' }
+    };
+
+    function closeNodeInfo() {
+      document.querySelectorAll('.svg-node').forEach(n => n.classList.remove('active'));
+      nodeInfoEl.style.display = 'none';
+    }
+
+    document.querySelectorAll('.svg-node').forEach(node => {
+      node.addEventListener('click', e => {
+        const key = node.dataset.node;
+        const info = NODE_INFO[key];
+        if (!info) return;
+        // 같은 노드 재클릭 → 토글 닫기
+        if (node.classList.contains('active')) {
+          closeNodeInfo();
+          e.stopPropagation();
+          return;
+        }
+        document.querySelectorAll('.svg-node').forEach(n => n.classList.remove('active'));
+        node.classList.add('active');
+        nodeInfoEl.style.display = 'block';
+        nodeInfoEl.innerHTML =
+          `<button class="node-info-close" type="button" aria-label="닫기">×</button>` +
+          `<div class="layman">${info.layman}</div>` +
+          `<span class="tech">${info.tech}</span>`;
+        // 닫기 버튼 핸들러
+        nodeInfoEl.querySelector('.node-info-close').addEventListener('click', ev => {
+          ev.stopPropagation();
+          closeNodeInfo();
+        });
+        e.stopPropagation();
+      });
+    });
+
+    // SVG 빈 공간 클릭 → 닫기
+    document.querySelectorAll('.arch-svg').forEach(svg => {
+      svg.addEventListener('click', e => {
+        if (!e.target.closest('.svg-node')) closeNodeInfo();
+      });
+    });
+
+    // ESC 키 → 닫기
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && nodeInfoEl.style.display !== 'none') {
+        closeNodeInfo();
+      }
+    });
+
+    archPlayBtn.addEventListener('click', async () => {
+      archPlayBtn.disabled = true;
+      const sequence = ['start','router','contextualize','extract','retrieve','rerank','compose','verify','end'];
+      const edges = ['e-start-router','e-router-ctx','e-ctx-ext','e-ext-ret','e-ret-rer','e-rer-comp','e-comp-ver','e-ver-end'];
+      // reset
+      document.querySelectorAll('.svg-node').forEach(n => n.classList.remove('flowing','active'));
+      document.querySelectorAll('.edge').forEach(e => e.classList.remove('active'));
+      nodeInfoEl.style.display = 'none';
+      for (let i = 0; i < sequence.length; i++) {
+        const node = document.querySelector(`.svg-node[data-node="${sequence[i]}"]`);
+        if (node) node.classList.add('flowing');
+        if (i > 0 && i - 1 < edges.length) {
+          const edge = document.getElementById(edges[i-1]);
+          if (edge) edge.classList.add('active');
+        }
+        await sleep(550);
+      }
+      await sleep(700);
+      document.querySelectorAll('.svg-node').forEach(n => n.classList.remove('flowing'));
+      document.querySelectorAll('.edge').forEach(e => e.classList.remove('active'));
+      archPlayBtn.disabled = false;
+    });
+  </script>
+</body>
+</html>

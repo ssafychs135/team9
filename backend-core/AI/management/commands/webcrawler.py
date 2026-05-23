@@ -16,6 +16,22 @@ import json
 import os
 # HTML 엔티티(예: &nbsp;)를 문자로 변환하기 위한 html 모듈을 가져옵니다.
 import html
+# 유니코드 정규화 (NBSP, 전각/반각 등 호환 문자를 표준 형태로)
+import unicodedata
+
+
+def _normalize(value):
+    """크롤링한 텍스트의 호환 문자를 NFKC 로 정규화. NBSP → 일반 공백 등.
+
+    str / list / dict 를 재귀적으로 처리한다.
+    """
+    if isinstance(value, str):
+        return unicodedata.normalize('NFKC', value)
+    if isinstance(value, list):
+        return [_normalize(v) for v in value]
+    if isinstance(value, dict):
+        return {_normalize(k): _normalize(v) for k, v in value.items()}
+    return value
 
 # Django의 management command는 반드시 Command라는 이름의 클래스로 정의되어야 하고, BaseCommand를 상속받아야 합니다.
 class Command(BaseCommand):
@@ -76,6 +92,8 @@ class Command(BaseCommand):
                 
                 model_name = model_name_tag.get_text(strip=True).split('-')[0].strip()
                 model_name = html.unescape(model_name)
+                # NBSP·전각 공백 등을 일반 공백으로 정규화 (파일명 일관성 + 후속 retrieval 매칭)
+                model_name = unicodedata.normalize('NFKC', model_name)
                 safe_model_name = re.sub(r'[\\/*?:\"<>|]', "", model_name)
                 filename = f"{safe_model_name}.json"
                 filepath = os.path.join(output_dir, filename)
@@ -130,6 +148,8 @@ class Command(BaseCommand):
                             page_data[section_title] = full_text
 
                 if page_data:
+                    # 본문 전체에 대해 재귀적으로 NFKC 정규화 후 저장
+                    page_data = _normalize(page_data)
                     with open(filepath, 'w', encoding='utf-8') as f:
                         json.dump(page_data, f, ensure_ascii=False, indent=4)
                     
