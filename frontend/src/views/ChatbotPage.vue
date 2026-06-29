@@ -175,7 +175,13 @@ async function sendMessage(text) {
         }
         try {
           const obj = JSON.parse(payload);
-          if (obj.chunk) {
+          if (obj.reset) {
+            // 서버 verify 가 결함(회피/누락) 감지 → 재생성 시작. 지금까지 그려진
+            // 결함 답변을 비우고, 다시 typing-dot 표시 후 재생성분으로 교체.
+            messages.value[botIndex].raw = '';
+            messages.value[botIndex].text = '';
+            isLoading.value = true;
+          } else if (obj.chunk) {
             // 첫 chunk 도착 → typing-dot 사라지고 텍스트 시작
             if (isLoading.value) isLoading.value = false;
             messages.value[botIndex].raw += obj.chunk;

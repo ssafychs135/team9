@@ -385,6 +385,78 @@ ChatState = {
 
 ---
 
+## 2026-06-07 — verify → compose_answer 재시도 루프 구현 (단일 체인으로는 불가능했던 순환 제어)
+
+### 증상 / 배경
+- 2026-05-23 비교 답변 디버깅에서 회피 표현·모델명 누락을 `qa_system_prompt` 지침 7-8 + few-shot + `temperature=0.0` 으로 억눌렀지만, 작은 LLM (Gemma 4 E4B) 특성상 **확률적으로 가끔 다시 회피**. prompt 강화는 상한이 있음 (이미 그 함정을 비교 디버깅 step 6→7 에서 확인).
+- 같은 날 LangGraph 마이그레이션에서 `verify_node` 를 넣었지만 **log-only** — 회피/누락을 *감지만* 하고 답변은 그대로 사용자에게 나감. "감지는 하는데 고치진 않는" 반쪽 상태로 남아 있었음.
+
+### 진단 / 설계 판단
+- 근본 해결 = 답변 생성 후 코드로 검증하고, 실패하면 **생성 단계로 되돌려 다시 생성하는 순환 루프**.
+- 그런데 이전 단일 체인(LCEL DAG)은 처리가 한 방향으로만 흘러 "되돌리기" 를 표현 불가. `RunnableBranch` 는 순방향 분기일 뿐 back-edge 가 아님. 체인 밖 `while` 로 흉내내면 router/retrieve 까지 통째 재실행 + 오케스트레이션이 체인 밖으로 누출 → 선언적 체인의 의미 상실.
+- LangGraph 의 conditional edge 는 노드로 되돌아가는 **사이클을 그래프 토폴로지로 직접 표현** → `compose_answer` 만 재실행. 이것이 마이그레이션의 실제 명분이자, 단일 체인 대비 유일한 본질적 차별점(검증이 아니라 **순환**).
+
+### 해결
+모두 `backend-core/` 내 3개 파일.
+
+**1. `AI/graph.py` — 순환 루프 + 상한 + 피드백 주입**
+```python
+_MAX_COMPOSE_ATTEMPTS = 2   # 최초 1 + 재시도. 로컬 Gemma 지연 고려.
+
+def _retry_pending(issues, attempts):          # 라우팅과 stream reset 이 공유하는 단일 기준
+    return bool(issues) and attempts < _MAX_COMPOSE_ATTEMPTS
+
+def _route_after_verify(state):
+    if _retry_pending(state.get("issues"), state.get("attempts", 0)):
+        return "compose_answer"                 # 검증 실패 → 생성 단계로 되돌림(사이클)
+    return END
+
+# 엣지 교체: 무조건 종료 → 조건부 백엣지
+g.add_conditional_edges("verify", _route_after_verify,
+                        {"compose_answer": "compose_answer", END: END})
+```
+`compose_answer_node` 는 재진입 시 직전 `issues` 를 `_build_retry_feedback()` 로 변환해 `[재작성 지침]` 으로 프롬프트에 주입 — **단순 재호출이 아니라 교정 신호 포함**. `attempts` 카운터는 `ChatState` 에 추가.
+
+**2. `AI/views.py` — 스트리밍 재시도 정합성**
+```python
+# stream_mode 를 리스트로 → (mode, payload) 튜플. updates 로 verify 판정 가로채기.
+for mode, payload in graph.stream(inputs, stream_mode=["updates", "messages"]):
+    if mode == "messages": ... # 토큰 forward
+    else:
+        if payload.get("compose_answer"): attempts = ...   # 노드 종료 시점 attempts 갱신
+        elif _retry_pending(payload.get("verify", {}).get("issues"), attempts):
+            parts.clear()                                  # 결함 답변 폐기
+            yield 'data: {"reset": true}\n\n'              # 클라이언트도 비우라 신호
+```
+
+**3. `frontend/src/views/ChatbotPage.vue`** — `reset` 수신 시 봇 버블 `raw/text` 비우고 typing-dot 재표시 → 재생성분으로 자연 교체.
+
+검증: 격리 토폴로지 테스트 (compose→verify→compose→verify→END, 정확히 1회 재시도 후 종료), `py_compile`, Django import + `_retry_pending`/`_build_retry_feedback` 단위 동작 모두 통과.
+
+### 함정
+- **스트리밍에서 재시도는 이미 보낸 토큰과 충돌**. `messages` 모드만으로는 attempt 경계를 못 잡음 — `verify` 는 LLM 토큰을 안 내보내 attempt1 마지막 토큰과 attempt2 첫 토큰이 연속으로 붙음. `updates` 모드를 병행해 노드 종료 이벤트로 경계를 감지해야 함.
+- **reset 판정은 그래프 라우팅과 같은 기준이어야 함**. verify 가 issues 를 내도 상한 도달이면 재시도 안 하는데, 그때 reset 을 보내면 최종 답변이 지워짐. `_retry_pending()` 단일 함수로 graph 라우팅과 stream reset 이 같은 기준을 공유하게 분리.
+- **재시도 = 단순 재호출이면 또 같은 회피**. 작은 LLM 은 같은 입력에 같은 실패를 반복할 확률이 높아, 직전 실패 사유(issues)를 프롬프트에 피드백으로 넣어야 교정 압력이 생김.
+
+### 측정 (남은 칸)
+- **구조는 완성**됐고 사이클 동작은 검증됨. 다만 "회피율이 실제로 줄었다" 는 **측정은 아직**. LM Studio e2e 로 회피 유발 비교 질문을 돌려 회피표현 발생률 before/after 를 세야 "구조 확보 → 결함 감소" 로 승격됨. `TROUBLESHOOTING.html` deck 의 P2(반복 실행 변동성) 패턴으로 시각화 예정.
+- 따라서 현재 정확한 서술은 *"회피·누락을 잡는 재시도 루프를 구현했다"* 까지. *"답변 품질이 올랐다"* 는 측정 후에 쓸 카드.
+
+### 교훈
+- **단일 체인 vs 그래프의 본질 차이는 "검증" 이 아니라 "사이클"**. 검증 한 단계만이면 `RunnableLambda` 로 단일 체인에 넣어도 됨. 그래프가 본전을 뽑는 건 검증 실패 시 되돌아가는 back-edge 가 필요할 때.
+- **log-only 검증은 절반**. 감지만 하고 교정 안 하면 사용자 답변 품질은 그대로 — 감지 → 재생성까지 루프를 닫아야 의미.
+- **순환 도입 시 상한 카운터는 필수**. `attempts` 없으면 계속 실패하는 query 에서 무한 루프. LangGraph `recursion_limit` 도 있지만, 의미있는 종료(상한 도달 시 최선답 반환)를 위해 명시 카운터가 낫다.
+- **스트리밍 + 재시도는 표면 기능 하나에 숨은 복잡도**. "되돌려 재생성" 한 줄이 클라이언트 버퍼 정합성(SSE reset)까지 끌고옴 — 백엔드 루프만 짜고 끝낼 수 없음.
+
+### 관련
+- `AI/graph.py` — `_route_after_verify`, `_retry_pending`, `_MAX_COMPOSE_ATTEMPTS`, `_build_retry_feedback`, `compose_answer_node`, conditional edge
+- `AI/views.py` — `chatbot_stream_api` 의 `stream_mode=["updates","messages"]` + `reset` 이벤트
+- `frontend/src/views/ChatbotPage.vue` — `reset` 핸들링
+- 2026-05-23 LangGraph 마이그레이션 (위 섹션) 의 verify log-only 를 이 작업으로 닫음
+- `mem:chatbot_enhancements` Phase 4 (verify retry) 달성
+
+---
+
 ## 기록 추가 형식
 
 새 사건 추가 시 다음 템플릿을 H2 section 으로 append:

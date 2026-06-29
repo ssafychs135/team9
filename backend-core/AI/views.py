@@ -10,7 +10,7 @@ from django.views.decorators.http import require_POST
 from langchain_core.messages import AIMessage, HumanMessage
 
 from .chatbot_service import initialize_chatbot
-from .graph import get_chatbot_graph
+from .graph import get_chatbot_graph, _retry_pending
 
 # 서버 시작 시 LLM 및 Retriever 초기화
 try:
@@ -133,22 +133,40 @@ def chatbot_stream_api(request):
     _USER_FACING_NODES = {"compose_answer", "general_chat"}
 
     def event_stream():
-        full_answer_parts: list[str] = []
+        # parts 는 "현재 시도" 의 토큰만 누적. verify 가 재시도를 결정하면 clear 하고
+        # 클라이언트에도 reset 을 보내, 결함 답변을 폐기 후 재생성분만 남긴다.
+        parts: list[str] = []
+        attempts = 0
         try:
-            # stream_mode="messages" : 매 LLM token chunk 마다 (chunk, metadata) emit.
-            # metadata["langgraph_node"] 로 어느 노드의 chunk 인지 식별.
-            for chunk, metadata in graph.stream(
+            # stream_mode 를 리스트로 주면 각 이벤트가 (mode, payload) 튜플로 옴.
+            # - "messages": payload=(chunk, metadata). LLM token 단위.
+            # - "updates" : payload={node: 반환 delta}. 노드 종료 시점에 1회.
+            # updates 로 compose_answer 의 attempts 와 verify 의 issues 를 가로채
+            # 재시도 여부를 그래프와 동일 기준(_retry_pending)으로 판정.
+            for mode, payload in graph.stream(
                 {"input": user_input, "chat_history": chat_history},
-                stream_mode="messages",
+                stream_mode=["updates", "messages"],
             ):
-                node = metadata.get("langgraph_node", "") if metadata else ""
-                if node not in _USER_FACING_NODES:
-                    continue
-                piece = getattr(chunk, "content", "") or ""
-                if not piece:
-                    continue
-                full_answer_parts.append(piece)
-                yield f"data: {json.dumps({'chunk': piece}, ensure_ascii=False)}\n\n"
+                if mode == "messages":
+                    chunk, metadata = payload
+                    node = metadata.get("langgraph_node", "") if metadata else ""
+                    if node not in _USER_FACING_NODES:
+                        continue
+                    piece = getattr(chunk, "content", "") or ""
+                    if not piece:
+                        continue
+                    parts.append(piece)
+                    yield f"data: {json.dumps({'chunk': piece}, ensure_ascii=False)}\n\n"
+                else:  # mode == "updates"
+                    compose_update = payload.get("compose_answer")
+                    if compose_update:
+                        attempts = compose_update.get("attempts", attempts)
+                        continue
+                    verify_update = payload.get("verify")
+                    if verify_update and _retry_pending(verify_update.get("issues"), attempts):
+                        # 재생성 예정 → 방금 스트리밍한 결함 답변을 양쪽에서 폐기.
+                        parts.clear()
+                        yield f"data: {json.dumps({'reset': True}, ensure_ascii=False)}\n\n"
         except Exception as e:
             sys.stderr.write(f"챗봇 스트리밍 중 오류: {e}\n")
             yield f"data: {json.dumps({'error': str(e)}, ensure_ascii=False)}\n\n"
@@ -158,7 +176,7 @@ def chatbot_stream_api(request):
         # StreamingHttpResponse 는 SessionMiddleware 의 자동 save 가 stream 시작 전에
         # 이미 끝나므로, generator 안의 session 수정은 명시 save() 없이는 휘발.
         # 따라서 직접 save() 를 호출해야 다음 요청에 history 가 보존됨.
-        full_answer = "".join(full_answer_parts)
+        full_answer = "".join(parts)
         chat_history.append(HumanMessage(content=user_input))
         chat_history.append(AIMessage(content=full_answer))
         request.session['chat_history'] = _messages_to_history(chat_history)
